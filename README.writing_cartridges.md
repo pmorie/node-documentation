@@ -13,8 +13,8 @@ Community](https://openshift.redhat.com/community) provided cartriges.
 This is the minimal structure to which your cartridge is expected to
 conform when written to disk. Failure to meet these expections will
 cause your cartridge to not function when either installed or used on
-the system. You may have additional directories or files.  They will
-be ignored by the system. Note these files are copied into each gear
+OpenShift. You may have additional directories or files.  They will
+be ignored by OpenShift. Note these files are copied into each gear
 using your cartridge therefore you should be frugal in using the gear's
 resources.
 
@@ -50,8 +50,8 @@ Unlocking allows the cartridge scripts to have additional access to the gear's
 files and directories. Other scripts and hooks written by the end user will 
 not be able to override decisions you make as the cartridge author.
 
-The lock state is controlled by the OpenShift infrastructure, and cartridges
-are locked and unlocked at various points in the cartridge lifecycle.
+The lock state is controlled by the OpenShift. Cartridges are locked
+and unlocked at various points in the cartridge lifecycle.
 
 If you fail to provide a `metadata/root_files.txt` file or the file
 is empty, your cartridge will remain always locked. For a very simple cartridges 
@@ -59,8 +59,8 @@ this may be sufficient.
 
 **Note on security:** Cartridge file locking is not intended to be a
 security measure. It is a mechanism to help prevent cartridge users from
-inadvertently breaking their apps by modifying files reserved for use
-by the cartridge.
+inadvertently breaking their application by modifying files reserved
+for use by the cartridge.
 
 ### Lock configuration ###
 
@@ -75,7 +75,7 @@ is processed as a directory.  Entries ending in asterisk are a list
 of files.  Entries ending in an other character are concidered files.
 The system will not attempt to change files to directories or vice versa,
 and your cartridge may fail to operate if files are miscatergorized and
-you depend on the system to create them.
+you depend on OpenShift to create them.
 
 #### Lock configuration example
 
@@ -122,7 +122,7 @@ A cartridge must implement the following scripts:
 
 ## bin/setup
 
-##### Usage
+##### Synopsis
 
 `setup [--version=<version>]`
 
@@ -130,12 +130,14 @@ A cartridge must implement the following scripts:
 
 * `--version=<version>`: Selects which version of cartridge to install. If no version is provided, 
 the default from `mainfest.yml` will be installed.
+* `--homedir` provides the parent directory where your cartridge is installed.
+If no homedir is provided, the default is OPENSHIFT_HOMEDIR.
 
-##### Summary
+##### Description
 
 The `setup` script is responsible for creating and/or configuring the files that
 were copied from the cartridge repository into the gear's directory. The `manifest.yaml` 
-file is used by the system to create the environment within which the setup command will run.
+file is used by OpenShift to create the environment within which the setup command will run.
 
 Lock context: `unlocked`
 
@@ -145,16 +147,19 @@ Your cartridge may provide a service that is consumed by multiple gears
 in one application. The system provides the orchestration neccessary
 for you to publish this service or services.
 
-ADD_ENV_VAR...
+* `ENV_VAR_ADD:` value
+* `CART_DATA:` value
+* `CART_PROPERTIES:` value
+* `APP_INFO:` value
 
 
 ## bin/teardown
 
-##### Usage
+##### Synopsis
 
 `teardown`
 
-##### Summary
+##### Description
 
 The `teardown` script prepares the gear for the cartridge to be
 removed. This is not called when the gear is destroyed.  The `teardown`
@@ -164,7 +169,7 @@ cartridge.
 
 Lock context: `unlocked`
 
-* jwh: If all future gears are scaled, should teardown just always be called? *
+*jwh: If all future gears are scaled, should teardown just always be called?*
 
 ##### Broker signals
 
@@ -172,12 +177,12 @@ Your cartridge may provide a service that is consumed by multiple gears
 in one application. The system provides the orchestration neccessary
 for you to publish this service or services.
 
-RM_ENV_VAR...
+* `ENV_VAR_REMOVE:` value
 
 
 ## bin/runhook
 
-##### Usage
+##### Synopsis
 
 `runhook <action> <uuid>`
 
@@ -186,9 +191,9 @@ RM_ENV_VAR...
 * `action`: which user operation the cartridge should perform
 * `uuid`: OPENSHIFT_GEAR_UUID *jwh: Do we still need this? It should always in the environment...*
 
-##### Summary
+##### Description
 
-Hooks are called by the system to allow the end user to control aspects
+Hooks are called by OpenShift to allow the end user to control aspects
 of the cartridge or the software controlled by the cartridge.
 
 The `runhook` script is usually a shim to ensure the environment
@@ -209,14 +214,14 @@ logged, again it may or may not be reported to the user.
 
 Actions:
 
- * jwh: not sure of list yet *
+ *jwh: not sure of list yet*
 
 Lock context: `locked`
 
 
 ## bin/control
 
-##### Usage
+##### Synopsis
 
 `control <action>`
 
@@ -224,9 +229,9 @@ Lock context: `locked`
 
 * `action`: which operation the cartridge should perform.
 
-##### Summary
+##### Description
 
-The `control` script allows the system or user to control the state of the cartridge.
+The `control` script allows OpenShift or user to control the state of the cartridge.
 
 The actions that must be supported:
 
@@ -248,11 +253,11 @@ Lock context: `locked`
 
 ## bin/build
 
-##### Usage
+##### Synopsis
 
 `build`
 
-##### Summary
+##### Description
 
 The `build` script is called during the `git push` to perform builds of the user's new code.
 
@@ -263,7 +268,7 @@ Environment Variables
 ---------------------
 
 Environment variables are use to communicate setup information between
-this cartridge and others, and to the system.  The cartridge controlled
+this cartridge and others, and to OpenShift.  The cartridge controlled
 variables are stored in the env directory and will be loaded after
 system provided environment variables but before your code is called.
 The system provided environment variables will be loaded and available
@@ -275,13 +280,13 @@ to be used for all cartridge entry points.
  * `HISTFILE` bash history file
  * `OPENSHIFT_APP_DNS` the application's fully qualifed domain name that your cartridge is a part of
  * `OPENSHIFT_APP_NAME` the validated user assigned name for the application. Black list is system dependent. 
- * `OPENSHIFT_APP_UUID` the system assigned UUID for the application
+ * `OPENSHIFT_APP_UUID` OpenShift assigned UUID for the application
  * `OPENSHIFT_DATA_DIR` the directory where your cartridge may store data
  * `OPENSHIFT_GEAR_DNS` the gear's fully qualifed domain name that your cartridge is a part of. May or may not be equal to
                         `OPENSHIFT_APP_DNS`
- * `OPENSHIFT_GEAR_NAME` the system assigned name for the gear. May or may not be equal to `OPENSHIFT_APP_NAME`
- * `OPENSHIFT_GEAR_UUID` the system assigned UUID for the gear
- * `OPENSHIFT_HOMEDIR` the system assigned directory from the gear
+ * `OPENSHIFT_GEAR_NAME` OpenShift assigned name for the gear. May or may not be equal to `OPENSHIFT_APP_NAME`
+ * `OPENSHIFT_GEAR_UUID` OpenShift assigned UUID for the gear
+ * `OPENSHIFT_HOMEDIR` OpenShift assigned directory for the gear
  * `OPENSHIFT_INTERNAL_IP` the private IP address for this gear *jwh: may go away*
  * `OPENSHIFT_INTERNAL_PORT` the private PORT for this gear *jwh: may go away*
  * `OPENSHIFT_REPO_DIR` the directory where the software your cartrige controls is stored
@@ -326,19 +331,3 @@ You may assume the
 `PATH=$OPENSHIFT_HOMEDIR/{cartridge&nbps;name}-{cartridge&nbsp;version}/bin:/bin:/usr/bin/`
 when your code is executed. Any additional directories your code requires
 will need to be set in your shim code.
-
-To install any php cartridge:
-
-     # cp -ad ./php-5.3 ~UUID/                 - Run as root
-     # stickshift/unlock.rb UUID php-5.3       - Run as root
-     $ ~/php-5.3/setup --version php-5.3       - Bulk of work, run as user, from ~UUID
-     # stickshift/lock.rb UUID php-5.3         - Run as root
-     $ ~/php-5.3/control start                 - Run as user
-
-To remove a php cartridge:
-
-     $ ~/php-5.3/control stop                  - Run as user
-     # stickshift/unlock.rb UUID php-5.3       - Run as root
-     $ ~/php-5.3/teardown                      - run as user, from ~UUID
-     # stickshift/lock.rb UUID php-5.3         - Run as root
-
