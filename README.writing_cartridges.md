@@ -50,8 +50,8 @@ Unlocking allows the cartridge scripts to have additional access to the gear's
 files and directories. Other scripts and hooks written by the end user will 
 not be able to override decisions you make as the cartridge author.
 
-The lock state is controlled by the OpenShift. Cartridges are locked
-and unlocked at various points in the cartridge lifecycle.
+The lock state is controlled by OpenShift. Cartridges are locked and
+unlocked at various points in the cartridge lifecycle.
 
 If you fail to provide a `metadata/root_files.txt` file or the file
 is empty, your cartridge will remain always locked. For a very simple cartridges 
@@ -73,7 +73,7 @@ Any missing parent directories will be created as needed. The list
 is anchored at the gear's home directory.  Entries ending in slash
 is processed as a directory.  Entries ending in asterisk are a list
 of files.  Entries ending in an other character are concidered files.
-The system will not attempt to change files to directories or vice versa,
+OpenShift will not attempt to change files to directories or vice versa,
 and your cartridge may fail to operate if files are miscatergorized and
 you depend on OpenShift to create them.
 
@@ -88,10 +88,10 @@ Here is a `root_files.txt` for a PHP cartridge:
 
 Note in the above list the files in the `php-5.3/conf` directory are
 unlocked but the directory itself is not.  Directories like `.node-gyp`
-and `.npm` in nodejs are **NOT** candidates to be created in this
-manner as they require the gear to have read and write access. These
-directories would need to be created by the nodejs setup script which
-is run while the gear is unlocked.
+and `.npm` in nodejs are **NOT** candidates to be created in this manner
+as they require the gear to have read and write access. These directories
+would need to be created by the nodejs `setup` script which is run while
+the gear is unlocked.
 
 The following list of directories are reserved:
 
@@ -114,10 +114,10 @@ Your API is the scripts and their associated actions.
 
 A cartridge must implement the following scripts:
 
-* `setup`: Description
-* `teardown`: Description
-* `runhook`: Description
-* `control`: Description
+* `setup`: prepare this instance of cartridge to be operational
+* `teardown`: prepare this instance of cartridge to be removed
+* `runhook`: run user provided code
+* `control`: command cartridge to report or change state
 
 
 ## bin/setup
@@ -144,7 +144,7 @@ Lock context: `unlocked`
 ##### Broker signals
 
 Your cartridge may provide a service that is consumed by multiple gears
-in one application. The system provides the orchestration neccessary
+in one application. OpenShift provides the orchestration neccessary
 for you to publish this service or services.
 
 * `ENV_VAR_ADD:` value
@@ -152,6 +152,7 @@ for you to publish this service or services.
 * `CART_PROPERTIES:` value
 * `APP_INFO:` value
 
+*jwh: See Krishna when he is back in town. He wished to make changes in this area with the model refactor.*
 
 ## bin/teardown
 
@@ -174,11 +175,12 @@ Lock context: `unlocked`
 ##### Broker signals
 
 Your cartridge may provide a service that is consumed by multiple gears
-in one application. The system provides the orchestration neccessary
+in one application. OpenShift provides the orchestration neccessary
 for you to publish this service or services.
 
 * `ENV_VAR_REMOVE:` value
 
+*jwh: See Krishna when he is back in town. He wished to make changes in this area with the model refactor.*
 
 ## bin/runhook
 
@@ -197,15 +199,15 @@ Hooks are called by OpenShift to allow the end user to control aspects
 of the cartridge or the software controlled by the cartridge.
 
 The `runhook` script is usually a shim to ensure the environment
-is correct for running your `action` code.  Hooks are called by the
-system when it requires an action that is or may be dependent on unique
+is correct for running the `action` code.  Hooks are called by OpenShift
+when it requires an action that is or may be dependent on unique
 properties of your cartridge or the code your cartridge controls. This
-script may be writted as a shim to provide access to a SCL-supported
+script may be written as a shim to provide access to a SCL-supported
 language.
 
 The hooks/scripts provided by the user are installed in
 `$OPENSHIFT_HOME/app-root/runtime/repo/.openshift/action-hooks`.
-Non-existanct or Non-executable scripts must be ignored.
+Non-existant or Non-executable scripts must be ignored.
 
 Return an exit status of 0 for successfull or unsupported
 operations. Non-zero when an error occurres. Text written on stdout may
@@ -245,11 +247,14 @@ The actions that must be supported:
       this may equate to a restart.
    * `restart` stop current process and start a new one for the code your cartridge controls
    * `tidy` all unused resources should be released. It is at your discretion to
-      determine what should be released. Remember on some systems resources may be
-      very limited. For example, `git gc...` or `rm .../logs/log.[0-9]`
+      determine what should be released. Be frugal, on some systems resources may be
+      very limited. Some possible actions:
+
+      git gc...
+      rm .../logs/log.[0-9]
+      mvn clean
 
 Lock context: `locked`
-
 
 ## bin/build
 
@@ -271,7 +276,7 @@ Environment variables are use to communicate setup information between
 this cartridge and others, and to OpenShift.  The cartridge controlled
 variables are stored in the env directory and will be loaded after
 system provided environment variables but before your code is called.
-The system provided environment variables will be loaded and available
+OpenShift provided environment variables will be loaded and available
 to be used for all cartridge entry points.
 
 *jwh: ruby 1.9 makes providing environments very easy. We should exploit that.*
