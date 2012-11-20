@@ -105,22 +105,34 @@ environment before calling additional scripts you write. Or, you may
 choose to create symlinks from these names to a name of your choosing.
 Your API is the scripts and their associated actions.
 
-### bin/setup ###
+A cartridge must implement the following scripts:
 
-`setup` is responsible for creating and/or configuring the files that
-were copied from the cartridge repository into the gear's directory.
+* `setup`: Description
+* `teardown`: Description
+* `runhook`: Description
+* `control`: Description
 
-_Cartridge lock context:_ `unlocked`
 
-_Arguments:_
+## bin/setup
 
-  * `--version` selects which version of cartridge to install. If no version is
-     provided, the default from the mainfest.yml will be installed.
+##### Usage
 
-The `metadata/manifest.yaml` file is used by the system to create the
-environment within which the setup command will run.
+`setup [--version=<version>]`
 
-_Signaling Broker_
+##### Options
+
+* `--version=<version>`: Selects which version of cartridge to install. If no version is provided, 
+the default from `mainfest.yml` will be installed.
+
+##### Summary
+
+The `setup` script is responsible for creating and/or configuring the files that
+were copied from the cartridge repository into the gear's directory. The `manifest.yaml` 
+file is used by the system to create the environment within which the setup command will run.
+
+Lock context: `unlocked`
+
+##### Broker signals
 
 Your cartridge may provide a service that is consumed by multiple gears
 in one application. The system provides the orchestration neccessary
@@ -128,7 +140,14 @@ for you to publish this service or services.
 
 ADD_ENV_VAR...
 
-### teardown ###
+
+## bin/teardown
+
+##### Usage
+
+`teardown`
+
+##### Summary
 
 The `teardown` script prepares the gear for the cartridge to be
 removed. This is not called when the gear is destroyed.  The `teardown`
@@ -136,13 +155,11 @@ script is only run when a cartridge is to be removed from the gear.
 The gear will continue to operate minus the functionality of this
 cartridge.
 
-_Cartridge lock context:_ `unlocked`
-
-_Arguments:_ None
+Lock context: `unlocked`
 
 * jwh: If all future gears are scaled, should teardown just always be called? *
 
-_Signaling Broker_
+##### Broker signals
 
 Your cartridge may provide a service that is consumed by multiple gears
 in one application. The system provides the orchestration neccessary
@@ -150,17 +167,22 @@ for you to publish this service or services.
 
 RM_ENV_VAR...
 
-### runhook ###
+
+## bin/runhook
+
+##### Usage
+
+`runhook <action> <uuid>`
+
+##### Options
+
+* `action`: which user operation the cartridge should perform
+* `uuid`: OPENSHIFT_GEAR_UUID *jwh: Do we still need this? It should always in the environment...*
+
+##### Summary
 
 Hooks are called by the system to allow the end user to control aspects
 of the cartridge or the software controlled by the cartridge.
-
-_Cartridge lock context:_ `locked`
-
-_Arguments:_ 
-
-  * `action` which user operation the cartridge should perform
-  * `uuid` OPENSHIFT_GEAR_UUID *jwh: Do we still need this? It should always in the environment...*
 
 The `runhook` script is usually a shim to ensure the environment
 is correct for running your `action` code.  Hooks are called by the
@@ -182,15 +204,22 @@ Actions:
 
  * jwh: not sure of list yet *
 
-### control ###
+Lock context: `locked`
+
+
+## bin/control
+
+##### Usage
+
+`control <action>`
+
+##### Options
+
+* `action`: which operation the cartridge should perform.
+
+##### Summary
 
 The `control` script allows the system or user to control the state of the cartridge.
-
-_Cartridge lock context:_ `locked`
-
-_Arguments:_ 
-
- * `action` which operation the cartridge should perform.
 
 The actions that must be supported:
 
@@ -207,13 +236,20 @@ The actions that must be supported:
       determine what should be released. Remember on some systems resources may be
       very limited. For example, `git gc...` or `rm .../logs/log.[0-9]`
 
-### build
+Lock context: `locked`
+
+
+## bin/build
+
+##### Usage
+
+`build`
+
+##### Summary
 
 The `build` script is called during the `git push` to perform builds of the user's new code.
 
-_Cartridge lock context:_ `locked`
-
-_Arguments:_  None
+Lock context: `locked`
 
 
 Environment Variables
