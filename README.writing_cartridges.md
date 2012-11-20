@@ -57,7 +57,12 @@ If you fail to provide a `metadata/root_files.txt` file or the file
 is empty, your cartridge will remain always locked. For a very simple cartridges 
 this may be sufficient.
 
-### Configuring Locking ###
+**Note on security:** Cartridge file locking is not intended to be a
+security measure. It is a mechanism to help prevent cartridge users from
+inadvertently breaking their apps by modifying files reserved for use
+by the cartridge.
+
+### Lock configuration ###
 
 The `metadata/root_files.txt` lists the files and directories, one per
 line, that will be provided to the cartridge author with read/write
@@ -72,7 +77,9 @@ The system will not attempt to change files to directories or vice versa,
 and your cartridge may fail to operate if files are miscatergorized and
 you depend on the system to create them.
 
-Here is a list for the php cartridge.
+#### Lock configuration example
+
+Here is a `root_files.txt` for a PHP cartridge:
 
     .pearrc
     php-5.3/bin/
@@ -81,7 +88,7 @@ Here is a list for the php cartridge.
 
 Note in the above list the files in the `php-5.3/conf` directory are
 unlocked but the directory itself is not.  Directories like `.node-gyp`
-and `.npm` for the nodejs are **NOT** candidates to be created in this
+and `.npm` in nodejs are **NOT** candidates to be created in this
 manner as they require the gear to have read and write access. These
 directories would need to be created by the nodejs setup script which
 is run while the gear is unlocked.
