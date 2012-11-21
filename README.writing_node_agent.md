@@ -2,44 +2,41 @@
 
 OpenShift node agents provide the interface for the broker to command a gear or gear's cartridge. 
 
-OpenShift cartridges provide the necessary command and control for
-the functionality of software that is running user's applications.
-OpenShift currently has many language cartridges JBoss, PHP, Ruby
-(Rails) etc. as well as many DB cartridges such as Postgres, Mysql,
-Mongo etc. Before writing your own cartridge you should search the
-current list of [Red Hat](https://openshift.redhat.com) and [OpenShift
-Community](https://openshift.redhat.com/community) provided cartriges.
+## Gear Directory Structure ##
 
-## Cartridge Directory Structure ##
+This is the minimal structure to which your gear is expected to conform
+when written to disk. Failure to meet these expections will cause your
+gear to not function when either installed or used on OpenShift. You may
+not have additional directories or files at the `uuid` level.  They will
+interfere with OpenShift's operation.
 
-This is the minimal structure to which your cartridge is expected to
-conform when written to disk. Failure to meet these expections will
-cause your cartridge to not function when either installed or used on
-the system. You may have additional directories or files.  They will
-be ignored by the system. Note these files are copied into each gear
-using your cartridge therefore you should be frugal in using the gear's
-resources.
-
-    `cartridge name`-`cartridge version`
-     +- bin
-     |  +- setup
-     |  +- teardown
-     |  +- runhook
-     |  +- control
-     +- versions
-     |  +- `software version`
-     |  |  +- bin
-     |  |  +- build
-     +- env
-     +- metadata
-     |  +- manifest.yml
-     |  +- root_files.txt
-
-To support multiple software versions with your cartridge,
-you may create symlinks between the bin/control and the setup
-versions/{cartridge&nbsp;version}/bin/control file. Or, you may choose
-to use the bin/control file as a shim to call the correct versioned
-control file.
+    .../`uuid`
+    +- `cartridge name`-`cartridge version`
+    |   +- bin
+    |   |  +- setup
+    |   |  +- teardown
+    |   |  +- runhook
+    |   |  +- control
+    |   |  +- build
+    |   +- versions
+    |   |  +- `software version`
+    |   |  |  +- bin
+    |   |  |     +- build
+    |   +- env
+    |   +- metadata
+    |   |  +- manifest.yml
+    |   |  +- root_files.txt
+    +- `cartridge name`-`cartridge version`
+    |   +- see above...
+    +- app-root
+    |  +- data
+    |  +- runtime
+    |     +- repo
+    +- git
+    +- .ssh
+    +- .tmp
+    +- .sandbox
+    +- .env *jwh: This is where we could put gear-wide environment variables.*
 
 ## Cartridge Locking ##
 
@@ -96,195 +93,7 @@ The following list of directories are reserved:
     app-root
     git
 
-## Cartridge Scripts ##
-
-How you implement the cartridge scripts in the `bin` directory is up to you as
-the author. For easily configured software where your cartridge is just
-installing one version, these scripts may include all the necessary
-code. For complex configurations or multi-version support, you may
-choose to write these scripts as shim code to setup the neccessary
-environment before calling additional scripts you write. Or, you may
-choose to create symlinks from these names to a name of your choosing.
-Your API is the scripts and their associated actions.
-
-### bin/setup ###
-
-`setup` is responsible for creating and/or configuring the files that
-were copied from the cartridge repository into the gear's directory.
-
-_Cartridge lock context:_ `unlocked`
-
-_Arguments:_
-
-  * `--version` selects which version of cartridge to install. If no version is
-     provided, the default from the mainfest.yml will be installed.
-
-The `metadata/manifest.yaml` file is used by the system to create the
-environment within which the setup command will run.
-
-_Signaling Broker_
-
-Your cartridge may provide a service that is consumed by multiple gears
-in one application. The system provides the orchestration neccessary
-for you to publish this service or services.
-
-ADD_ENV_VAR...
-
-### teardown ###
-
-The `teardown` script prepares the gear for the cartridge to be
-removed. This is not called when the gear is destroyed.  The `teardown`
-script is only run when a cartridge is to be removed from the gear.
-The gear will continue to operate minus the functionality of this
-cartridge.
-
-_Cartridge lock context:_ `unlocked`
-
-_Arguments:_ None
-
-* jwh: If all future gears are scaled, should teardown just always be called? *
-
-_Signaling Broker_
-
-Your cartridge may provide a service that is consumed by multiple gears
-in one application. The system provides the orchestration neccessary
-for you to publish this service or services.
-
-RM_ENV_VAR...
-
-### runhook ###
-
-Hooks are called by the system to allow the end user to control aspects
-of the cartridge or the software controlled by the cartridge.
-
-_Cartridge lock context:_ `locked`
-
-_Arguments:_ 
-
-  * `action` which user operation the cartridge should perform
-  * `uuid` OPENSHIFT_GEAR_UUID *jwh: Do we still need this? It should always in the environment...*
-
-The `runhook` script is usually a shim to ensure the environment
-is correct for running your `action` code.  Hooks are called by the
-system when it requires an action that is or may be dependent on unique
-properties of your cartridge or the code your cartridge controls. This
-script may be writted as a shim to provide access to a SCL-supported
-language.
-
-The hooks/scripts provided by the user are installed in
-`$OPENSHIFT_HOME/app-root/runtime/repo/.openshift/action-hooks`.
-Non-existanct or Non-executable scripts must be ignored.
-
-Return an exit status of 0 for successfull or unsupported
-operations. Non-zero when an error occurres. Text written on stdout may
-or may not be reported to the user.  Text returned on stderr will be
-logged, again it may or may not be reported to the user.
-
-Actions:
-
- * jwh: not sure of list yet *
-
-### control ###
-
-The `control` script allows the system or user to control the state of the cartridge.
-
-_Cartridge lock context:_ `locked`
-
-_Arguments:_ 
-
- * `action` which operation the cartridge should perform.
-
-The actions that must be supported:
-
-   * `start` start the software your cartridge controls
-   * `stop` stop the software your cartridge controls
-   * `status` return an 0 exit status if your cartridge code is running.
-      Additionally, you may return user directed information to stdout.
-      Errors may be return on stderr with an non-zero exit status.
-   * `reload` your cartridge and it's controlled code needs to re-read their
-      configuration information. Depending on the software your cartridge is controlling
-      this may equate to a restart.
-   * `restart` stop current process and start a new one for the code your cartridge controls
-   * `tidy` all unused resources should be released. It is at your discretion to
-      determine what should be released. Remember on some systems resources may be
-      very limited. For example, `git gc...` or `rm .../logs/log.[0-9]`
-
-### build
-
-The `build` script is called during the `git push` to perform builds of the user's new code.
-
-_Cartridge lock context:_ `locked`
-
-_Arguments:_  None
-
-
-Environment Variables
----------------------
-
-Environment variables are use to communicate setup information between
-this cartridge and others, and to the system.  The cartridge controlled
-variables are stored in the env directory and will be loaded after
-system provided environment variables but before your code is called.
-The system provided environment variables will be loaded and available
-to be used for all cartridge entry points.
-
-*jwh: ruby 1.9 makes providing environments very easy. We should exploit that.*
-
-### System Provided Variables (Read Only) ###
- * `HISTFILE` bash history file
- * `OPENSHIFT_APP_DNS` the application's fully qualifed domain name that your cartridge is a part of
- * `OPENSHIFT_APP_NAME` the validated user assigned name for the application. Black list is system dependent. 
- * `OPENSHIFT_APP_UUID` the system assigned UUID for the application
- * `OPENSHIFT_DATA_DIR` the directory where your cartridge may store data
- * `OPENSHIFT_GEAR_DNS` the gear's fully qualifed domain name that your cartridge is a part of. May or may not be equal to
-                        `OPENSHIFT_APP_DNS`
- * `OPENSHIFT_GEAR_NAME` the system assigned name for the gear. May or may not be equal to `OPENSHIFT_APP_NAME`
- * `OPENSHIFT_GEAR_UUID` the system assigned UUID for the gear
- * `OPENSHIFT_HOMEDIR` the system assigned directory from the gear
- * `OPENSHIFT_INTERNAL_IP` the private IP address for this gear *jwh: may go away*
- * `OPENSHIFT_INTERNAL_PORT` the private PORT for this gear *jwh: may go away*
- * `OPENSHIFT_REPO_DIR` the directory where the software your cartrige controls is stored
- * `OPENSHIFT_TMP_DIR` the directory where your cartridge may store temporary data
-
-### Examples of Cartridge Provided Variables ###
-
-*jwh: Is this true? or should the manifest call these out and the broker do the work?*
-
- * `OPENSHIFT_MYSQL_DB_HOST`
- * `OPENSHIFT_MYSQL_DB_LOG_DIR`
- * `OPENSHIFT_MYSQL_DB_PASSWORD`
- * `OPENSHIFT_MYSQL_DB_PORT`
- * `OPENSHIFT_MYSQL_DB_SOCKET`
- * `OPENSHIFT_MYSQL_DB_URL`
- * `OPENSHIFT_MYSQL_DB_USERNAME`
- * `OPENSHIFT_PHP_IP`
- * `OPENSHIFT_PHP_LOG_DIR`
- * `OPENSHIFT_PHP_PORT`
-
-*jwh: now these are very cartridge dependent*
-
- * JENKINS_URL
- * JENKINS_USERNAME
- * JENKINS_PASSWORD
-
-Your environment variables should be prefixed with
-`OPENSHIFT_{cartridge&nbsp;name}_` to prevent overwriting other cartridge
-variables in the process environment space.  The software you are
-controlling may require environment variables of it's own, for example:
-`JENKINS_URL`. Those you would add to your `env` directory or include
-in shim code in your `bin` scripts.
-
-Cartridge provided environment variables are not validated by the
-system. Your cartridge may fail to function if you write invalid data
-to these files. For the `JENKINS_URL` you would be expected to write
-the file `env/JENKINS_URL` with the following content:
-
-`export JENKINS_URL='http://jenkins-domain.rhcloud.com/'`
-
-You may assume the
-`PATH=$OPENSHIFT_HOMEDIR/{cartridge&nbps;name}-{cartridge&nbsp;version}/bin:/bin:/usr/bin/`
-when your code is executed. Any additional directories your code requires
-will need to be set in your shim code.
+## Cartridge Operations ##
 
 To install any php cartridge:
 
