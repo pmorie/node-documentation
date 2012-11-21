@@ -6,12 +6,12 @@ OpenShift currently has many language cartridges JBoss, PHP, Ruby
 (Rails) etc. as well as many DB cartridges such as Postgres, Mysql,
 Mongo etc. Before writing your own cartridge you should search the
 current list of [Red Hat](https://openshift.redhat.com) and [OpenShift
-Community](https://openshift.redhat.com/community) provided cartriges.
+Community](https://openshift.redhat.com/community) provided cartridges.
 
 ## Cartridge Directory Structure ##
 
 This is the minimal structure to which your cartridge is expected to
-conform when written to disk. Failure to meet these expections will
+conform when written to disk. Failure to meet these expectations will
 cause your cartridge to not function when either installed or used on
 OpenShift. You may have additional directories or files.  They will
 be ignored by OpenShift. Note these files are copied into each gear
@@ -24,10 +24,11 @@ resources.
      |  +- teardown
      |  +- runhook
      |  +- control
+     |  +- build
      +- versions
      |  +- `software version`
      |  |  +- bin
-     |  |  +- build
+     |  |     +- build
      +- env
      +- metadata
      |  +- manifest.yml
@@ -39,6 +40,64 @@ versions/{cartridge&nbsp;version}/bin/control file. Or, you may choose
 to use the bin/control file as a shim to call the correct versioned
 control file.
 
+## Cartridge Metadata ##
+
+The `manifest.yaml` file is used by OpenShift to determine what features
+your cartridge requires and in turn publishes. OpenShift also uses fields
+in the `manifest.yml` to determine what data to present to the end user
+about your cartridge.
+
+An example `manifest.yml` file:
+
+```yaml
+Name: diy-0.1
+Display-Name: diy v1.0.0 (noarch)
+Description: "Experimental cartridge providing a way to try unsupported languages, frameworks, and middleware on OpenShift"
+Version: 1.0.0
+License: "ASL 2.0"
+License-Url: http://www.apache.org/licenses/LICENSE-2.0.txt
+Vendor:
+Categories:
+  - cartridge
+  - web-framework
+Website:
+Help-Topics:
+  "Getting Started": https://www.openshift.com/community/videos/getting-started-with-diy-applications-on-openshift
+Cart-Data:
+  - Key: OPENSHIFT_...
+    Type: environment
+    Description: "How environment variable should be used"
+Suggests:
+
+Provides:
+  - "diy-0.1"
+Requires:
+Conflicts:
+Native-Requires:
+Architecture: noarch
+Publishes:
+  get-doc-root:
+    Type: "FILESYSTEM:doc-root"
+  publish-http-url:
+    Type: "NET_TCP:httpd-proxy-info"
+  publish-gear-endpoint:
+    Type: "NET_TCP:gear-endpoint-info"
+Subscribes:
+  set-db-connection-info:
+    Type: "NET_TCP:db:connection-info"
+    Required: false
+  set-nosql-db-connection-info:
+    Type: "NET_TCP:nosqldb:connection-info"
+    Required: false
+Reservations:
+  - MEM >= 10MB
+Scaling:
+  Min: 1
+  Max: -1
+```
+
+*jwh: How do we want to cover the manifest.yml features?*
+
 ## Cartridge Locking ##
 
 Cartridges on disk within a gear may be either `locked` or `unlocked` at
@@ -46,15 +105,15 @@ a given time. When a cartridge is unlocked, a subset of files and directories
 (specified by `root_files.txt`) will be writable by the gear user to enable
 the cartridge scripts to perform their work.
 
-Unlocking allows the cartridge scripts to have additional access to the gear's 
-files and directories. Other scripts and hooks written by the end user will 
+Unlocking allows the cartridge scripts to have additional access to the gear's
+files and directories. Other scripts and hooks written by the end user will
 not be able to override decisions you make as the cartridge author.
 
 The lock state is controlled by OpenShift. Cartridges are locked and
 unlocked at various points in the cartridge lifecycle.
 
 If you fail to provide a `metadata/root_files.txt` file or the file
-is empty, your cartridge will remain always locked. For a very simple cartridges 
+is empty, your cartridge will remain always locked. For a very simple cartridges
 this may be sufficient.
 
 **Note on security:** Cartridge file locking is not intended to be a
@@ -67,12 +126,12 @@ for use by the cartridge.
 The `metadata/root_files.txt` lists the files and directories, one per
 line, that will be provided to the cartridge author with read/write
 access while the cartridge is unlocked, but only read access to the end
-user while the cartridge is locked. Any non-existant files that are
+user while the cartridge is locked. Any non-existent files that are
 included in the list will be created when the cartridge is unlocked.
 Any missing parent directories will be created as needed. The list
 is anchored at the gear's home directory.  Entries ending in slash
 is processed as a directory.  Entries ending in asterisk are a list
-of files.  Entries ending in an other character are concidered files.
+of files.  Entries ending in an other character are considered files.
 OpenShift will not attempt to change files to directories or vice versa,
 and your cartridge may fail to operate if files are miscatergorized and
 you depend on OpenShift to create them.
@@ -107,7 +166,7 @@ How you implement the cartridge scripts in the `bin` directory is up to you as
 the author. For easily configured software where your cartridge is just
 installing one version, these scripts may include all the necessary
 code. For complex configurations or multi-version support, you may
-choose to write these scripts as shim code to setup the neccessary
+choose to write these scripts as shim code to setup the necessary
 environment before calling additional scripts you write. Or, you may
 choose to create symlinks from these names to a name of your choosing.
 Your API is the scripts and their associated actions.
@@ -128,30 +187,31 @@ A cartridge must implement the following scripts:
 
 ##### Options
 
-* `--version=<version>`: Selects which version of cartridge to install. If no version is provided, 
-the default from `mainfest.yml` will be installed.
+* `--version=<version>`: Selects which version of cartridge to install. If no version is provided,
+the default from `manifest.yml` will be installed.
 * `--homedir` provides the parent directory where your cartridge is installed.
 If no homedir is provided, the default is OPENSHIFT_HOMEDIR.
 
 ##### Description
 
 The `setup` script is responsible for creating and/or configuring the files that
-were copied from the cartridge repository into the gear's directory. The `manifest.yaml` 
-file is used by OpenShift to create the environment within which the setup command will run.
+were copied from the cartridge repository into the gear's directory.
 
 Lock context: `unlocked`
 
-##### Broker signals
+##### Messaging to OpenShift from cartridge
 
-Your cartridge may provide a service that is consumed by multiple gears
-in one application. OpenShift provides the orchestration neccessary
-for you to publish this service or services.
+Your cartridge may provide a service or services that is consumed by
+multiple gears in one application. OpenShift provides the orchestration
+necessary for you to publish this service or services. Each message is
+written to stdout, one message per line.
 
-* `ENV_VAR_ADD:` value
-* `CART_DATA:` value
-* `CART_PROPERTIES:` value
-* `APP_INFO:` value
+* `ENV_VAR_ADD: <variable name>=<value>`
+* `CART_DATA: <variable name>=<value>`
+* `CART_PROPERTIES: <key>=<value>`
+* `APP_INFO: <value>`
 
+*jwh: need to explain when/where to use each...  May need to change format to match Lock context*
 *jwh: See Krishna when he is back in town. He wished to make changes in this area with the model refactor.*
 
 ## bin/teardown
@@ -172,13 +232,13 @@ Lock context: `unlocked`
 
 *jwh: If all future gears are scaled, should teardown just always be called?*
 
-##### Broker signals
+##### Messaging to OpenShift from cartridge
 
-Your cartridge may provide a service that is consumed by multiple gears
-in one application. OpenShift provides the orchestration neccessary
-for you to publish this service or services.
+After `teardown` your cartridge's services are no longer available. For
+each environment variable you published, you must now un-publish it by
+writing to stdout the following message(s):
 
-* `ENV_VAR_REMOVE:` value
+* `ENV_VAR_REMOVE: <name>`
 
 *jwh: See Krishna when he is back in town. He wished to make changes in this area with the model refactor.*
 
@@ -207,9 +267,9 @@ language.
 
 The hooks/scripts provided by the user are installed in
 `$OPENSHIFT_HOME/app-root/runtime/repo/.openshift/action-hooks`.
-Non-existant or Non-executable scripts must be ignored.
+Non-existent or Non-executable scripts must be ignored.
 
-Return an exit status of 0 for successfull or unsupported
+Return an exit status of 0 for successful or unsupported
 operations. Non-zero when an error occurres. Text written on stdout may
 or may not be reported to the user.  Text returned on stderr will be
 logged, again it may or may not be reported to the user.
@@ -249,10 +309,11 @@ The actions that must be supported:
    * `tidy` all unused resources should be released. It is at your discretion to
       determine what should be released. Be frugal, on some systems resources may be
       very limited. Some possible actions:
-
-      git gc...
-      rm .../logs/log.[0-9]
-      mvn clean
+```
+    git gc...
+    rm .../logs/log.[0-9]
+    mvn clean
+```
 
 Lock context: `locked`
 
@@ -283,18 +344,18 @@ to be used for all cartridge entry points.
 
 ### System Provided Variables (Read Only) ###
  * `HISTFILE` bash history file
- * `OPENSHIFT_APP_DNS` the application's fully qualifed domain name that your cartridge is a part of
- * `OPENSHIFT_APP_NAME` the validated user assigned name for the application. Black list is system dependent. 
+ * `OPENSHIFT_APP_DNS` the application's fully qualified domain name that your cartridge is a part of
+ * `OPENSHIFT_APP_NAME` the validated user assigned name for the application. Black list is system dependent.
  * `OPENSHIFT_APP_UUID` OpenShift assigned UUID for the application
  * `OPENSHIFT_DATA_DIR` the directory where your cartridge may store data
- * `OPENSHIFT_GEAR_DNS` the gear's fully qualifed domain name that your cartridge is a part of. May or may not be equal to
+ * `OPENSHIFT_GEAR_DNS` the gear's fully qualified domain name that your cartridge is a part of. May or may not be equal to
                         `OPENSHIFT_APP_DNS`
  * `OPENSHIFT_GEAR_NAME` OpenShift assigned name for the gear. May or may not be equal to `OPENSHIFT_APP_NAME`
  * `OPENSHIFT_GEAR_UUID` OpenShift assigned UUID for the gear
  * `OPENSHIFT_HOMEDIR` OpenShift assigned directory for the gear
  * `OPENSHIFT_INTERNAL_IP` the private IP address for this gear *jwh: may go away*
  * `OPENSHIFT_INTERNAL_PORT` the private PORT for this gear *jwh: may go away*
- * `OPENSHIFT_REPO_DIR` the directory where the software your cartrige controls is stored
+ * `OPENSHIFT_REPO_DIR` the directory where the software your cartridge controls is stored
  * `OPENSHIFT_TMP_DIR` the directory where your cartridge may store temporary data
 
 ### Examples of Cartridge Provided Variables ###
@@ -333,6 +394,6 @@ the file `env/JENKINS_URL` with the following content:
 `export JENKINS_URL='http://jenkins-domain.rhcloud.com/'`
 
 You may assume the
-`PATH=$OPENSHIFT_HOMEDIR/{cartridge&nbps;name}-{cartridge&nbsp;version}/bin:/bin:/usr/bin/`
+`PATH=$OPENSHIFT_HOMEDIR/{cartridge&nbsp;name}-{cartridge&nbsp;version}/bin:/bin:/usr/bin/`
 when your code is executed. Any additional directories your code requires
 will need to be set in your shim code.
