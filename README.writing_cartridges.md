@@ -30,9 +30,13 @@ resources.
      |  |  +- bin
      |  |     +- build
      +- env
+     |  +- *.erb
      +- metadata
      |  +- manifest.yml
      |  +- root_files.txt
+     +- http.d
+        +- `cartridge name`-`cartrige version`.conf.erb
+        +- ...
 
 To support multiple software versions with your cartridge,
 you may create symlinks between the bin/control and the setup
@@ -194,8 +198,18 @@ If no homedir is provided, the default is OPENSHIFT_HOMEDIR.
 
 ##### Description
 
-The `setup` script is responsible for creating and/or configuring the files that
-were copied from the cartridge repository into the gear's directory.
+The `setup` script is responsible for creating and/or configuring the
+files that were copied from the cartridge repository into the gear's
+directory. If you have used ERB templates for software configuration
+this is where you would processes those files.  An example would be
+PHP's php.ini file:
+
+    upload_tmp_dir = "<%= ENV['OPENSHIFT_HOMEDIR'] %>php-5.3/tmp/"
+    session.save_path = "<%= ENV['OPENSHIFT_HOMEDIR'] %>php-5.3/sessions/"
+
+Other candidates for templates are httpd configuration files for
+`includes`, configuring database to store persistent data in the
+OPENSHIFT_DATA_DIR, and setting the application name in the pom.xml file.
 
 Lock context: `unlocked`
 
@@ -213,6 +227,22 @@ written to stdout, one message per line.
 
 *jwh: need to explain when/where to use each...  May need to change format to match Lock context*
 *jwh: See Krishna when he is back in town. He wished to make changes in this area with the model refactor.*
+
+## Custom HTTP Services
+
+Your cartridge may expose services using the application's URL by
+providing snippet(s) of Apache configuration code using ERB templates in
+the http.d directory. The http.d directory and it's contents are optional.
+After OpenShift has run your `setup` script it will render each ERB
+template, and write the contents the node's httpd configuration.
+
+An example of `mongodb-2.2.conf.erb`:
+
+    Alias /health <%= ENV['OPENSHIFT_HOMEDIR'] + "/mongodb-2.2/http.d/health.html" %>
+    Alias / <%= ENV['OPENSHIFT_HOMEDIR'] + "/mongodb-2.2/http.d/index.html" %>
+
+Your templates will be rendered at `safe_level 2`.  [Locking Ruby in
+the Safe](http://www.ruby-doc.org/docs/ProgrammingRuby/html/taint.html).
 
 ## bin/teardown
 
@@ -360,7 +390,7 @@ to be used for all cartridge entry points.
 
 ### Examples of Cartridge Provided Variables ###
 
-*jwh: Is this true? or should the manifest call these out and the broker do the work?*
+*jwh: Is this true? or should the manifest call these out and the node do the work? Or, are these ERB candidates?*
 
  * `OPENSHIFT_MYSQL_DB_HOST`
  * `OPENSHIFT_MYSQL_DB_LOG_DIR`
@@ -381,19 +411,38 @@ to be used for all cartridge entry points.
 
 Your environment variables should be prefixed with
 `OPENSHIFT_{cartridge&nbsp;name}_` to prevent overwriting other cartridge
-variables in the process environment space.  The software you are
+variables in the process environment space. By convention, an environment
+variable whos value is a directory should have a name that ends in
+_DIR and the value should have a trailing slash. The software you are
 controlling may require environment variables of it's own, for example:
 `JENKINS_URL`. Those you would add to your `env` directory or include
 in shim code in your `bin` scripts.
 
 Cartridge provided environment variables are not validated by the
 system. Your cartridge may fail to function if you write invalid data
-to these files. For the `JENKINS_URL` you would be expected to write
-the file `env/JENKINS_URL` with the following content:
+to these files. If you provide ERB templates in the `env` directory,
+OpenShift will render those files and remove the .erb suffix. They will
+be processed before your `setup` script is run. You could write the
+`env/JENKINS_URL.erb` as:
 
-`export JENKINS_URL='http://jenkins-domain.rhcloud.com/'`
+    JENKINS_URL='https://<%= ENV['OPENSHIFT_APP_DNS'] %>/'
+
+which would then be rendered as `env/JENKINS_URL`:
+
+    JENKINS_URL='http://jenkins-namespace.rhcloud.com/'
+
+Or, `env/OPENSHIFT_MONGODB_DB_LOG_DIR.erb`:
+
+    OPENSHIFT_MONGODB_DB_LOG_DIR='<% ENV['OPENSHIFT_HOMEDIR'] %>/mongodb-2.2/log/'
+
+renders as `env/OPENSHIFT_MONGODB_DB_LOG_DIR`:
+
+    OPENSHIFT_MONGODB_DB_LOG_DIR='/var/lib/openshift/aa9e0f66e6451791f86904eef0939e/mongodb-2.2/log/'
+
+Your templates will be rendered at `safe_level 2`.  [Locking Ruby in
+the Safe](http://www.ruby-doc.org/docs/ProgrammingRuby/html/taint.html).
 
 You may assume the
 `PATH=$OPENSHIFT_HOMEDIR/{cartridge&nbsp;name}-{cartridge&nbsp;version}/bin:/bin:/usr/bin/`
 when your code is executed. Any additional directories your code requires
-will need to be set in your shim code.
+will need to be added in your shim code.
