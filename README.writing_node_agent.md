@@ -23,9 +23,12 @@ interfere with OpenShift's operation.
     |   |  |  +- bin
     |   |  |     +- build
     |   +- env
+    |   |  +- *.erb
     |   +- metadata
     |   |  +- manifest.yml
     |   |  +- root_files.txt
+    |   +- http.d
+    |   |  +- `cartridge name`-`cartridge version`.conf.erb
     +- `cartridge name`-`cartridge version`
     |   +- see above...
     +- app-root
@@ -170,11 +173,12 @@ TODO: deal with node httpd bouncing somewhere
 
 * Disable cgroups
 * Create the initial cart directory from the cart repo/template
+* Process env ERB templates
 * Unlock cartridge
 * Call cartridge setup
 * Lock cartridge
 * Call cartridge control start
-* Install cart-supplied node http.d confs
+* Install cart-supplied node http.d confs (ERB templates)
 * Bounce the node httpd
 * Enable cgroups
 
