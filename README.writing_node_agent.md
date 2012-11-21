@@ -110,3 +110,109 @@ To remove a php cartridge:
      $ ~/php-5.3/teardown                      - run as user, from ~UUID
      # stickshift/lock.rb UUID php-5.3         - Run as root
 
+
+## High Level Orchestrations
+
+Broker level orchestrations orchestrations which are accomplished by the node library.
+
+
+### Create Application
+
+* Gear Create
+* Cartridge Install
+* Expose ports
+* Execute connectors
+
+
+## Node Operation Summary
+
+An overview of the higher level capabilities of the node, with information about how lower-level operations are orchestrated / invoked.
+
+
+### Gear
+
+* Create
+* Delete
+
+
+### Cartridge
+
+* Configure
+* Deconfigure
+* Expose ports
+* Conceal ports
+* Add / remove environment vars
+* Start / Stop / Restart (Control cartridge?)
+
+## Node Operation Details
+
+### Gear Create
+
+* Creates a UNIX account representing the gear user.
+* Creates skeletal file system
+* Creates cgroups / mcslabels?
+* Creates port proxy config
+* Create standard gear environment variables
+* Install default gear httpd conf
+* Bounce node httpd
+
+### Gear Delete
+
+* Call cartridge runhook pre-destroy
+* Corral and kill all gear user processes
+* Call cartridge teardown
+* Delete gear directories
+* Delete gear user
+
+TODO: deal with node httpd bouncing somewhere
+
+### Cartridge Configure
+
+* Disable cgroups
+* Create the initial cart directory from the cart repo/template
+* Unlock cartridge
+* Call cartridge setup
+* Lock cartridge
+* Call cartridge control start
+* Install cart-supplied node http.d confs
+* Bounce the node httpd
+* Enable cgroups
+
+TODO: any runhook calls here? e.g. post-install
+
+### Cartridge Deconfigure
+* Conceal ports
+* Disable cgroups
+* Call cartridge control stop
+* Unlock cartridge
+* Call cartridge teardown
+* Uninstall cart-supplied node httpd.confs
+* Lock cartridge
+* Delete cartridge directory
+* Enable cgroups
+* Bounce the node httpd (performance impact?)
+
+TODO: any runhook calls here? e.g. post-remove
+
+
+### Cartridge expose port
+
+* Create .env/OPENSHIFT_${CART_NS}_PROXY_PORT
+* Report OPENSHIFT_GEAR_DNS, OPENSHIFT_${CART_NS}_PROXY_PORT, OPENSHIFT_INTERNAL_IP, OPENSHIFT_INTERNAL_PORT back to broker
+
+### Cartridge conceal ports
+
+* Delete .env/OPENSHIFT_${CART_NS}_PROXY_PORT
+* remove_proxy_port $uuid "$OPENSHIFT_INTERNAL_IP:$OPENSHIFT_INTERNAL_PORT"
+
+## Low Level
+
+### Lock cartridge
+
+* chown files in root_files.txt
+* chcon to set sel context
+
+### Unlock cartridge
+
+* chown files in root_files.txt
+* chcon to set sel context
