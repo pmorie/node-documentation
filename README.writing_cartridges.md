@@ -188,6 +188,7 @@ OpenShift follows the convention that your scripts should return zero
 for success, and non-zero success. Additionally, OpenShift follows the
 conventions from sysexit.h below:
 
+```
     0. Success
    64. Usage: The command was used incorrectly, e.g., with the wrong number of arguments, a bad flag, a bad syntax in a parameter, or whatever.
    65. Data Error: The input data was incorrect in some way.  This should only be used for user's data and not system files.
@@ -211,6 +212,7 @@ conventions from sysexit.h below:
        the problem was found while reading the configuration file.
    80-128. reserved for OpenShift usage
    128 + n. Where N is the signal that killed your script
+```
 
 Copyright (c) 1987, 1993 The Regents of the University of California.  All rights reserved.
 
