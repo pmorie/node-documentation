@@ -182,6 +182,40 @@ A cartridge must implement the following scripts:
 * `runhook`: run user provided code
 * `control`: command cartridge to report or change state
 
+### Exit Status Codes ###
+
+OpenShift follows the convention that your scripts should return zero
+for success, and non-zero success. Additionally, OpenShift follows the
+conventions from sysexit.h below:
+
+    0. Success
+   64. Usage: The command was used incorrectly, e.g., with the wrong number of arguments, a bad flag, a bad syntax in a parameter, or whatever.
+   65. Data Error: The input data was incorrect in some way.  This should only be used for user's data and not system files.
+   66. No Input: An input file (not a system file) did not exist or was not readable.  This could also include errors like "No message" to a mailer.
+   67. No User: The user specified did not exist.  This might be used for mail addresses or remote logins.
+   68. No Host: The host specified did not exist.  This is used in mail addresses or network requests.
+   69. A service is unavailable.  This can occur if a support program or file does not exist.
+       This can also be used as a catchall message when something you wanted to do doesn't work, but you don't know why.
+   70. Software Error: An internal software error has been detected.  This should be limited to non-operating system related errors as possible.
+   71. OS Error: An operating system error has been detected.  This is intended to be used for such things as "cannot fork",
+       "cannot create pipe", or the like.  It includes things like getuid returning a user that does not exist in the passwd file.
+   72. OS File: Some system file (e.g., /etc/passwd, /etc/utmp, etc.) does not exist, cannot be opened, or has some sort of error (e.g., syntax error).
+   73. Cannot Create: A (user specified) output file cannot be created.
+   74. IO Error: An error occurred while doing I/O on some file.
+   75. Temporary Failure: Failure is something that is not really an error.  In sendmail, this means that a mailer (e.g.) could not create a connection,
+        and the request should be reattempted later.
+   76. Protocol: the remote system returned something that was "not possible" during a protocol exchange.
+   77. No Permission: You did not have sufficient permission to perform the operation.  This is not intended for file system problems,
+       which should use NOINPUT or CANTCREAT, but rather for higher level permissions.
+   78. Configuration Error: A fatal configuration problem was found, but this does not necessarily mean that
+       the problem was found while reading the configuration file.
+   80-128. reserved for OpenShift usage
+   128 + n. Where N is the signal that killed your script
+
+Copyright (c) 1987, 1993 The Regents of the University of California.  All rights reserved.
+
+These exit status codes will allow OpenShift to refine it's behavior when returning HTTP status codes for the REST API, whether an internal operation can
+continue or should aborted etc. Should your script return a value not included in this table, OpenShift will assume the problem is fatal to your cartridge.
 
 ## bin/setup
 
@@ -338,14 +372,17 @@ The actions that must be supported:
    * `restart` stop current process and start a new one for the code your cartridge controls
    * `tidy` all unused resources should be released. It is at your discretion to
       determine what should be released. Be frugal, on some systems resources may be
-      very limited. Some possible actions:
+      very limited. Some possible behaviors:
 ```
-    git gc...
     rm .../logs/log.[0-9]
     mvn clean
 ```
+     OpenShift has the following default behaviors:
+        * the git repository will be garbage collected
+        * all files will be removed from the /tmp directory
 
 Lock context: `locked`
+
 
 ## bin/build
 
