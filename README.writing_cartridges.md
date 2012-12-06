@@ -212,9 +212,9 @@ conventions from sysexit.h below:
        the problem was found while reading the configuration file.
    80-128. reserved for OpenShift usage
    128 + n. Where N is the signal that killed your script
-```
 
 Copyright (c) 1987, 1993 The Regents of the University of California.  All rights reserved.
+```
 
 These exit status codes will allow OpenShift to refine it's behavior when returning HTTP status codes for the REST API, whether an internal operation can
 continue or should aborted etc. Should your script return a value not included in this table, OpenShift will assume the problem is fatal to your cartridge.
