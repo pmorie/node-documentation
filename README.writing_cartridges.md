@@ -156,13 +156,18 @@ as they require the gear to have read and write access. These directories
 would need to be created by the nodejs `setup` script which is run while
 the gear is unlocked.
 
-The following list of directories are reserved:
+The following list of directories are reserved the the gear's home
+directory:
 
     .ssh
     .sandbox
     .tmp
-    app-root
-    git
+    .env
+    any directory or file not of the form `cartridge name`-`cartridge version`
+
+You may create any hidden file or directory (one that starts with a
+period) not in the reserved list in the gear's home directory while the
+cartridge is unlocked.
 
 ## Cartridge Scripts ##
 
