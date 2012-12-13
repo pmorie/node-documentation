@@ -93,6 +93,11 @@ Subscribes:
   set-nosql-db-connection-info:
     Type: "NET_TCP:nosqldb:connection-info"
     Required: false
+Exposed-Ports:
+  PORT_A: 5555
+  PORT_B: 6666
+  PORT_C: 7777
+  ...
 Reservations:
   - MEM >= 10MB
 Scaling:
@@ -168,6 +173,52 @@ directory:
 You may create any hidden file or directory (one that starts with a
 period) not in the reserved list in the gear's home directory while the
 cartridge is unlocked.
+
+
+## Exposing Ports ##
+
+All cartridges expose a default host and port for HTTP communications. Your 
+cartridge may expose additional ports to allow communication with other 
+cartridges in OpenShift. The exposed ports are available via environment 
+variables corresponding to the name specified for the mapping. All mappings 
+route to `OPENSHIFT_INTERNAL_IP`.
+
+Ports are namespaced.  The default mapping is named 
+`OPENSHIFT_{CART_NS}_PROXY_PORT:{PORT}`. The `{CART_NS}` portion of the host 
+name is generated according to [TODO: DOC EXISTING ALGORITHM], and the port 
+assignment is random. The `OPENSHIFT_{CART_NS}` namespace will be prefixed to 
+all cartridge-defined port mappings.
+
+Additional mappings are defined via the cartridge `manifest.yml` file, in 
+the `Exposed-Ports` section. Each entry is a key-value pair, where the key is 
+the name of the port, and the value is the port to map.
+
+### Expose Port Example ###
+
+Given a cartridge named `CustomCart` and the following entry in `manifest.yml`:
+
+```
+Exposed-Ports:
+  - PORT_A: 55555
+  - PORT_B: 66666
+```
+
+The following proxy port mappings will be generated:
+
+```
+ASSIGNED_IP:ASSIGNED_PORT_0 => OPENSHIFT_INTERNAL_IP:OPENSHIFT_INTERNAL_PORT
+ASSIGNED_IP:ASSIGNED_PORT_1 => OPENSHIFT_INTERNAL_IP:5555
+ASSIGNED_IP:ASSIGNED_PORT_2 => OPENSHIFT_INTERNAL_IP:6666
+```
+
+The following environment variables will be created:
+
+```
+OPENSHIFT_CUSTOMCART_PROXY_PORT=ASSIGNED_IP:ASSIGNED_PORT_0
+OPENSHIFT_CUSTOMCART_PORT_A=ASSIGNED_IP:ASSIGNED_PORT_1
+OPENSHIFT_CUSTOMCART_PORT_B=ASSIGNED_IP:ASSIGNED_PORT_2
+```
+
 
 ## Cartridge Scripts ##
 
