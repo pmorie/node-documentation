@@ -34,6 +34,8 @@ resources.
      +- metadata
      |  +- manifest.yml
      |  +- root_files.txt
+     |  +- snapshot_exclusions.txt (optional)
+     |  +- snapshot_transforms.txt (optional)
      +- http.d
         +- `cartridge name`-`cartrige version`.conf.erb
         +- ...
@@ -404,8 +406,7 @@ The `build` script is called during the `git push` to perform builds of the user
 Lock context: `locked`
 
 
-Environment Variables
----------------------
+## Environment Variables
 
 Environment variables are use to communicate setup information between
 this cartridge and others, and to OpenShift.  The cartridge controlled
@@ -490,3 +491,20 @@ You may assume the
 `PATH=$OPENSHIFT_HOMEDIR/{cartridge&nbsp;name}-{cartridge&nbsp;version}/bin:/bin:/usr/bin/`
 when your code is executed. Any additional directories your code requires
 will need to be added in your shim code.
+
+## Backing up and Restoring your cartridge
+
+OpenShift uses the tar command when backing up and restoring the gear that
+contains your cartridge. The file `metadata/snapshot_exclusions.txt`
+contains a pattern per line of files that will not be backed up or
+restored. If you exclude files from being backed up and restored you need
+to ensure those files are not required for your cartridge's operation.
+
+The file `metadata/snapshot_transforms.txt` contains sed replace
+expressions one per line and is used to transform file names during
+restore.
+
+Both files are optional and may be omitted. Empty files will be
+ignored. Patterns are from the OPENSHIFT_HOMEDIR parent directory rather
+than your cartridge's directory.  See the man page for tar the --transform
+and --exclude-from for more details.
