@@ -8,9 +8,12 @@ Mongo etc. Before writing your own cartridge you should search the
 current list of [Red Hat](https://openshift.redhat.com) and [OpenShift
 Community](https://openshift.redhat.com/community) provided cartridges.
 
+Cartridge configuration and setup is convention based, with an emphasis
+on minimizing external dependencies in the cartridge code.
+
 ## Cartridge Directory Structure ##
 
-This is the minimal structure to which your cartridge is expected to
+This is an example structure to which your cartridge is expected to
 conform when written to disk. Failure to meet these expectations will
 cause your cartridge to not function when either installed or used on
 OpenShift. You may have additional directories or files.
@@ -23,9 +26,13 @@ OpenShift. You may have additional directories or files.
      |  +- control
      |  +- build
      +- versions
-     |  +- `software version`
+     |  +- `cartridge name`-`software version`
      |  |  +- bin
      |  |     +- build
+     |  |  +- data
+     |  |     +- git_template.git
+     |  |        +- ... (bare git repository)
+     |  +- ...
      +- env
      |  +- *.erb
      +- metadata
@@ -33,9 +40,13 @@ OpenShift. You may have additional directories or files.
      |  +- locked_files.txt        (optional)
      |  +- snapshot_exclusions.txt (optional)
      |  +- snapshot_transforms.txt (optional)
-     +- http.d
-        +- `cartridge name`-`cartrige version`.conf.erb
-        +- ...
+     +- httpd.d                    (optional)
+     |  +- `cartridge name`-`cartrige version`.conf.erb
+     |  +- ...
+     +- conf.d                     (example)
+     |  +- openshift.conf.erb
+     +- conf                       (example)
+     |  +- magic
 
 To support multiple software versions with your cartridge,
 you may create symlinks between the bin/control and the setup
@@ -233,14 +244,15 @@ OPENSHIFT_CUSTOMCART_SERVICE_B=<assigned external IP>:<assigned port 2>
 
 ## Cartridge Scripts ##
 
-How you implement the cartridge scripts in the `bin` directory is up to you as
-the author. For easily configured software where your cartridge is just
-installing one version, these scripts may include all the necessary
-code. For complex configurations or multi-version support, you may
-choose to write these scripts as shim code to setup the necessary
+How you implement the cartridge scripts in the `bin` directory is
+up to you as the author. For easily configured software where your
+cartridge is just installing one version, these scripts may include all
+the necessary code. For complex configurations or multi-version support,
+you may choose to write these scripts as shim code to setup the necessary
 environment before calling additional scripts you write. Or, you may
 choose to create symlinks from these names to a name of your choosing.
-Your API is the scripts and their associated actions.
+Your API is the scripts and their associated actions. The scripts will
+be run from the home directory of the gear.
 
 A cartridge must implement the following scripts:
 
@@ -334,15 +346,15 @@ written to stdout, one message per line.
 ## Custom HTTP Services
 
 Your cartridge may expose services using the application's URL by
-providing snippet(s) of Apache configuration code using ERB templates in
-the http.d directory. The http.d directory and it's contents are optional.
-After OpenShift has run your `setup` script it will render each ERB
-template, and write the contents the node's httpd configuration.
+providing snippet(s) of Apache configuration code using ERB templates
+in the httpd.d directory. The httpd.d directory and it's contents are
+optional.  After OpenShift has run your `setup` script it will render
+each ERB template, and write the contents the node's httpd configuration.
 
 An example of `mongodb-2.2.conf.erb`:
 
-    Alias /health <%= ENV['OPENSHIFT_HOMEDIR'] + "/mongodb-2.2/http.d/health.html" %>
-    Alias / <%= ENV['OPENSHIFT_HOMEDIR'] + "/mongodb-2.2/http.d/index.html" %>
+    Alias /health <%= ENV['OPENSHIFT_HOMEDIR'] + "/mongodb-2.2/httpd.d/health.html" %>
+    Alias / <%= ENV['OPENSHIFT_HOMEDIR'] + "/mongodb-2.2/httpd.d/index.html" %>
 
 Your templates will be rendered at `safe_level 2`.  [Locking Ruby in
 the Safe](http://www.ruby-doc.org/docs/ProgrammingRuby/html/taint.html).
@@ -568,3 +580,16 @@ Both files are optional and may be omitted. Empty files will be
 ignored. Patterns are from the OPENSHIFT_HOMEDIR parent directory rather
 than your cartridge's directory.  See the man page for tar the --transform
 and --exclude-from for more details.
+
+The following files and directories are never backed up:
+
+```
+.tmp
+.ssh
+.sandbox
+*/conf.d/openshift.conf
+*/run/httpd.pid
+haproxy-\*/run/stats
+app-root/runtime/.state
+app-root/data/.bash_history
+```

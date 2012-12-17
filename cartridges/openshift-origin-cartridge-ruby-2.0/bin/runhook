@@ -1,0 +1,13 @@
+#!/usr/bin/bash -e 
+
+source .env/ruby-*/$RUBY_VERSION
+
+case $RUBY_VERSION
+  ruby-1.8)
+    exec ruby "$@"
+    ;;
+  ruby-1.9)
+    args="$@"
+    exec scl enable ruby193 "hook $args"
+    ;;
+esac

@@ -1,0 +1,32 @@
+ServerRoot "<%= ENV['OPENSHIFT_HOMEDIR] %><%= ENV['OPENSHIFT_RUBY_CART_ID %>"
+DocumentRoot "<%= ENV['OPENSHIFT_REPO_DIR] %>public"
+Listen <%= ENV['OPENSHIFT_RUBY_IP'] %>:<%= ENV['OPENSHIFT_RUBY_PORT'] %>
+User <%= ENV['OPENSHIFT_GEAR_UUID'] %>
+Group <%= ENV['OPENSHIFT_GEAR_UUID'] %>
+
+ErrorLog "|/usr/sbin/rotatelogs <%= ENV['OPENSHIFT_HOMEDIR'] %><%= ENV['OPENSHIFT_RUBY_CART_ID %>/logs/error_log-%Y%m%d-%H%M%S-%Z 86400"
+CustomLog "|/usr/sbin/rotatelogs <%= ENV['OPENSHIFT_HOMEDIR'] %><%= ENV['OPENSHIFT_RUBY_CART_ID %>/logs/access_log-%Y%m%d-%H%M%S-%Z 86400" combined
+
+PassengerUser <%= ENV['OPENSHIFT_GEAR_UUID'] %>
+PassengerPreStart http://<%= ENV['OPENSHIFT_RUBY_IP'] %>:<%= ENV['OPENSHIFT_RUBY_PORT'] %>/
+PassengerSpawnIPAddress <%= ENV['OPENSHIFT_RUBY_IP'] %>
+PassengerUseGlobalQueue off
+
+<Directory <%= ENV['OPENSHIFT_REPO_DIR] %>public>
+  AllowOverride all
+  Options -MultiViews
+</Directory>
+
+# TODO: Adjust from ALL to more conservative values
+<IfModule !mod_bw.c>
+    LoadModule bw_module    modules/mod_bw.so
+</IfModule>
+
+<ifModule mod_bw.c>
+  BandWidthModule On
+  ForceBandWidthModule On
+  BandWidth all 500000
+  MaxConnection all 20
+  BandWidthError 510
+</IfModule>
+

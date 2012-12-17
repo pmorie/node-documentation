@@ -1,0 +1,24 @@
+#!/usr/bin/bash -e
+
+# TODO: obtain version from command line: --version
+VERSION=ruby-1.8
+
+# Save configured Ruby version for future script invocations
+echo "RUBY_VERSION=$VERSION" >env/RUBY_VERSION
+
+mkdir ../.gem
+mkdir run tmp logs
+ln -s ../app-root/data ../app-root/repo ../app-root/runtime .
+
+mkdir $OPENSHIFT_REPO_DIR/public $OPENSHIFT_REPO_DIR/tmp
+ln -s $OPENSHIFT_REPO_DIR/log/production.log $VERSION/logs/production.log
+
+case $VERSION
+  ruby-1.8)
+    cp versions/ruby-1.8/etc/etc/conf.d/passenger.conf etc/conf.d
+    ;;
+  ruby-1.9)
+    cp versions/ruby-1.9/etc/etc/conf.d/passenger.conf etc/conf.d
+    cp versions/ruby-1.9/bin/activate-ruby-1.9 .
+    ;;
+esac

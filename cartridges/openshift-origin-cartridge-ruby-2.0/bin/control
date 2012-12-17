@@ -1,0 +1,7 @@
+#!/bin/bash -e
+
+case $1
+  start)
+    /usr/sbin/httpd -C "Include conf.d/*.conf" -f $HTTPD_CFG_FILE -k $1
+    run_user_hook post_start_${cartridge_type}
+
