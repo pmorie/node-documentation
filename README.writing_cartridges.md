@@ -13,10 +13,7 @@ Community](https://openshift.redhat.com/community) provided cartridges.
 This is the minimal structure to which your cartridge is expected to
 conform when written to disk. Failure to meet these expectations will
 cause your cartridge to not function when either installed or used on
-OpenShift. You may have additional directories or files.  They will
-be ignored by OpenShift. Note these files are copied into each gear
-using your cartridge therefore you should be frugal in using the gear's
-resources.
+OpenShift. You may have additional directories or files.
 
     `cartridge name`-`cartridge version`
      +- bin
@@ -33,7 +30,7 @@ resources.
      |  +- *.erb
      +- metadata
      |  +- manifest.yml
-     |  +- root_files.txt
+     |  +- locked_files.txt        (optional)
      |  +- snapshot_exclusions.txt (optional)
      |  +- snapshot_transforms.txt (optional)
      +- http.d
@@ -46,12 +43,17 @@ versions/{cartridge&nbsp;version}/bin/control file. Or, you may choose
 to use the bin/control file as a shim to call the correct versioned
 control file.
 
+OpenShift will create symlinks (see cp -srp) from the cartridge
+repository for the requested version when creating the gear's cartridge
+instance. Later (see Cartridge Locking) we'll describe how, as the
+cartridge author, you can customize this cartridge instance.
+
 ## Cartridge Metadata ##
 
-The `manifest.yaml` file is used by OpenShift to determine what features
+The `manifest.yml` file is used by OpenShift to determine what features
 your cartridge requires and in turn publishes. OpenShift also uses fields
-in the `manifest.yml` to determine what data to present to the end user
-about your cartridge.
+in the `manifest.yml` to determine what data to present to the cartridge
+user about your cartridge.
 
 An example `manifest.yml` file:
 
@@ -111,19 +113,20 @@ Scaling:
 
 ## Cartridge Locking ##
 
-Cartridges on disk within a gear may be either `locked` or `unlocked` at
-a given time. When a cartridge is unlocked, a subset of files and directories
-(specified by `root_files.txt`) will be writable by the gear user to enable
-the cartridge scripts to perform their work.
+Cartridge instances within a gear may be either `locked` or `unlocked`
+at a given time. When a cartridge is unlocked, a subset of files and
+directories (specified by `locked_files.txt`) will be writable by the gear
+user to enable the cartridge scripts to perform their work.
 
-Unlocking allows the cartridge scripts to have additional access to the gear's
-files and directories. Other scripts and hooks written by the end user will
-not be able to override decisions you make as the cartridge author.
+Unlocking allows the cartridge scripts to have additional access to the
+gear's files and directories. Other scripts and hooks written by the
+cartridge user will not be able to override decisions you make as the
+cartridge author.
 
 The lock state is controlled by OpenShift. Cartridges are locked and
 unlocked at various points in the cartridge lifecycle.
 
-If you fail to provide a `metadata/root_files.txt` file or the file
+If you fail to provide a `metadata/locked_files.txt` file or the file
 is empty, your cartridge will remain always locked. For a very simple cartridges
 this may be sufficient.
 
@@ -134,26 +137,30 @@ for use by the cartridge.
 
 ### Lock configuration ###
 
-The `metadata/root_files.txt` lists the files and directories, one per
+The `metadata/locked_files.txt` lists the files and directories, one per
 line, that will be provided to the cartridge author with read/write
-access while the cartridge is unlocked, but only read access to the end
-user while the cartridge is locked. Any non-existent files that are
-included in the list will be created when the cartridge is unlocked.
-Any missing parent directories will be created as needed. The list
-is anchored at the gear's home directory.  Entries ending in slash
-is processed as a directory.  Entries ending in asterisk are a list
-of files.  Entries ending in an other character are considered files.
-OpenShift will not attempt to change files to directories or vice versa,
-and your cartridge may fail to operate if files are miscatergorized and
-you depend on OpenShift to create them.
+access while the cartridge is unlocked, but only read access to the
+cartridge user while the cartridge is locked.
+
+OpenShift will replace the cartridge instance symlinks included in the
+`metadata/locked_files.txt` with the actual files the first time the
+cartridge instance is unlocked. 
+
+Any non-existent files that are included in the list will be created
+when the cartridge is unlocked.  Any missing parent directories will be
+created as needed. The list is anchored at the gear's home directory.
+Entries ending in slash is processed as a directory.  Entries ending
+in asterisk are a list of files.  Entries ending in an other character
+are considered files.  OpenShift will not attempt to change files to
+directories or vice versa, and your cartridge may fail to operate if
+files are miscatergorized and you depend on OpenShift to create them.
 
 #### Lock configuration example
 
-Here is a `root_files.txt` for a PHP cartridge:
+Here is a `locked_files.txt` for a PHP cartridge:
 
     .pearrc
     php-5.3/bin/
-    php-5.3/bin/*
     php-5.3/conf/*
 
 Note in the above list the files in the `php-5.3/conf` directory are
@@ -170,7 +177,7 @@ directory:
     .sandbox
     .tmp
     .env
-    any directory or file not of the form `cartridge name`-`cartridge version`
+    any not hidden directory or file
 
 You may create any hidden file or directory (one that starts with a
 period) not in the reserved list in the gear's home directory while the
@@ -381,8 +388,8 @@ writing to stdout the following message(s):
 
 ##### Description
 
-Hooks are called by OpenShift to allow the end user to control aspects
-of the cartridge or the software controlled by the cartridge.
+Hooks are called by OpenShift to allow the cartridge user to control
+aspects of the cartridge or the software controlled by the cartridge.
 
 The `runhook` script is usually a shim to ensure the environment
 is correct for running the `action` code.  Hooks are called by OpenShift
