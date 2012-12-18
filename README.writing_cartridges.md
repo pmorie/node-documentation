@@ -41,7 +41,7 @@ OpenShift. You may have additional directories or files.
      |  +- snapshot_exclusions.txt (optional)
      |  +- snapshot_transforms.txt (optional)
      +- httpd.d                    (optional)
-     |  +- `cartridge name`-`cartrige version`.conf.erb
+     |  +- `cartridge name`-`cartridge version`.conf.erb
      |  +- ...
      +- conf.d                     (example)
      |  +- openshift.conf.erb
@@ -54,7 +54,7 @@ versions/{cartridge&nbsp;version}/bin/control file. Or, you may choose
 to use the bin/control file as a shim to call the correct versioned
 control file.
 
-OpenShift will create symlinks (see cp -srp) from the cartridge
+OpenShift will create symlinks (see `cp -srp`) from the cartridge
 repository for the requested version when creating the gear's cartridge
 instance. Later (see Cartridge Locking) we'll describe how, as the
 cartridge author, you can customize this cartridge instance.
