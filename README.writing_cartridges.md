@@ -19,13 +19,13 @@ cause your cartridge to not function when either installed or used on
 OpenShift. You may have additional directories or files.
 
     `cartridge name`-`cartridge version`
-     +- bin
-     |  +- setup
-     |  +- teardown
-     |  +- runhook
-     |  +- control
-     |  +- build
-     +- versions
+     +- bin                        (required)
+     |  +- setup                   (required)
+     |  +- teardown                (optional)
+     |  +- runhook                 (optional)
+     |  +- control                 (required)
+     |  +- build                   (optional)
+     +- versions                   (example)
      |  +- `cartridge name`-`software version`
      |  |  +- bin
      |  |     +- build
@@ -33,8 +33,10 @@ OpenShift. You may have additional directories or files.
      |  |     +- git_template.git
      |  |        +- ... (bare git repository)
      |  +- ...
-     +- env
+     +- env                        (required)
      |  +- *.erb
+     +- opt                        (optional)
+     |  +- ...
      +- metadata
      |  +- manifest.yml
      |  +- locked_files.txt        (optional)
@@ -48,16 +50,20 @@ OpenShift. You may have additional directories or files.
      +- conf                       (example)
      |  +- magic
 
-To support multiple software versions with your cartridge,
+To support multiple software versions within one cartridge,
 you may create symlinks between the bin/control and the setup
-versions/{cartridge&nbsp;version}/bin/control file. Or, you may choose
+versions/{cartridge version}/bin/control file. Or, you may choose
 to use the bin/control file as a shim to call the correct versioned
 control file.
 
-OpenShift will create symlinks (see `cp -srp`) from the cartridge
-repository for the requested version when creating the gear's cartridge
-instance. Later (see Cartridge Locking) we'll describe how, as the
-cartridge author, you can customize this cartridge instance.
+When creating an instance of your cartridge for use by a gear, OpenShift
+will copy the files, links and directories from the cartridge repository
+with the exclusion of the opt directory. The opt directory will be
+sym-linked into the gear's cartridge instance. This allows for sharing
+of libraries and other data across cartridge instances.
+
+Later (see Cartridge Locking) we'll describe how, as the cartridge author,
+you can customize a cartridge instance.
 
 ## Cartridge Metadata ##
 
@@ -124,15 +130,11 @@ Scaling:
 
 ## Cartridge Locking ##
 
-Cartridge instances within a gear may be either `locked` or `unlocked`
-at a given time. When a cartridge is unlocked, a subset of files and
-directories (specified by `locked_files.txt`) will be writable by the gear
-user to enable the cartridge scripts to perform their work.
-
-Unlocking allows the cartridge scripts to have additional access to the
-gear's files and directories. Other scripts and hooks written by the
-cartridge user will not be able to override decisions you make as the
-cartridge author.
+Cartridge instances within a gear will be either `locked` or `unlocked`
+at any given time.  Unlocking a cartridge allows the cartridge scripts
+to have additional access to the gear's files and directories. Other
+scripts and hooks written by the cartridge user will not be able to
+override decisions you make as the cartridge author.
 
 The lock state is controlled by OpenShift. Cartridges are locked and
 unlocked at various points in the cartridge lifecycle.
@@ -142,25 +144,21 @@ is empty, your cartridge will remain always locked. For a very simple cartridges
 this may be sufficient.
 
 **Note on security:** Cartridge file locking is not intended to be a
-security measure. It is a mechanism to help prevent cartridge users from
-inadvertently breaking their application by modifying files reserved
-for use by the cartridge.
+security measure. It is a mechanism to help prevent application developers
+from inadvertently breaking their application by modifying files reserved
+for use by the cartridge author.
 
 ### Lock configuration ###
 
-The `metadata/locked_files.txt` lists the files and directories, one per
-line, that will be provided to the cartridge author with read/write
+The `metadata/locked_files.txt` lists the files and directories, one
+per line, that will be provided to the cartridge author with read/write
 access while the cartridge is unlocked, but only read access to the
-cartridge user while the cartridge is locked.
-
-OpenShift will replace the cartridge instance symlinks included in the
-`metadata/locked_files.txt` with the actual files the first time the
-cartridge instance is unlocked. 
+application developer while the cartridge is locked.
 
 Any non-existent files that are included in the list will be created
 when the cartridge is unlocked.  Any missing parent directories will be
 created as needed. The list is anchored at the gear's home directory.
-Entries ending in slash is processed as a directory.  Entries ending
+An entry ending in slash is processed as a directory.  Entries ending
 in asterisk are a list of files.  Entries ending in an other character
 are considered files.  OpenShift will not attempt to change files to
 directories or vice versa, and your cartridge may fail to operate if
@@ -176,13 +174,14 @@ Here is a `locked_files.txt` for a PHP cartridge:
 
 Note in the above list the files in the `php-5.3/conf` directory are
 unlocked but the directory itself is not.  Directories like `.node-gyp`
-and `.npm` in nodejs are **NOT** candidates to be created in this manner
-as they require the gear to have read and write access. These directories
-would need to be created by the nodejs `setup` script which is run while
-the gear is unlocked.
+and `.npm` in nodejs are **NOT** candidates to be created in this
+manner as they require the gear to have read and write access while
+the application is deploying and running. These directories would need
+to be created by the nodejs `setup` script which is run while the gear
+is unlocked.
 
-The following list of directories are reserved the the gear's home
-directory:
+The following list of directories are reserved by OpenShift in the the
+gear's home directory:
 
     .ssh
     .sandbox
@@ -487,7 +486,7 @@ system provided environment variables but before your code is called.
 OpenShift provided environment variables will be loaded and available
 to be used for all cartridge entry points.
 
-*jwh: ruby 1.9 makes providing environments very easy. We should exploit that.*
+*jwh: ruby 1.9 makes providing environments when executing commands very easy. We should exploit that.*
 
 ### System Provided Variables (Read Only) ###
  * `HISTFILE` bash history file
@@ -527,7 +526,7 @@ to be used for all cartridge entry points.
  * JENKINS_PASSWORD
 
 Your environment variables should be prefixed with
-`OPENSHIFT_{cartridge&nbsp;name}_` to prevent overwriting other cartridge
+`OPENSHIFT_{cartridge name}_` to prevent overwriting other cartridge
 variables in the process environment space. By convention, an environment
 variable whos value is a directory should have a name that ends in
 _DIR and the value should have a trailing slash. The software you are
@@ -560,7 +559,7 @@ Your templates will be rendered at `safe_level 2`.  [Locking Ruby in
 the Safe](http://www.ruby-doc.org/docs/ProgrammingRuby/html/taint.html).
 
 You may assume the
-`PATH=$OPENSHIFT_HOMEDIR/{cartridge&nbsp;name}-{cartridge&nbsp;version}/bin:/bin:/usr/bin/`
+`PATH=$OPENSHIFT_HOMEDIR/{cartridge name}-{cartridge version}/bin:/bin:/usr/bin/`
 when your code is executed. Any additional directories your code requires
 will need to be added in your shim code.
 
