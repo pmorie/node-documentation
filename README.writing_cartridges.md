@@ -1,3 +1,8 @@
+TODO:
+
+- [ ] Gear log design. Read access.
+- [ ] Template git repo needs to be controlled by setup and then promoted by node platform
+
 # How To Write An OpenShift Origin Cartridge 2.0 #
 
 OpenShift cartridges provide the necessary command and control for
@@ -25,7 +30,7 @@ OpenShift. You may have additional directories or files.
      |  +- runhook                 (optional)
      |  +- control                 (required)
      |  +- build                   (optional)
-     +- versions                   (example)
+     +- versions                   (discretionary)
      |  +- `cartridge name`-`software version`
      |  |  +- bin
      |  |     +- build
@@ -42,12 +47,12 @@ OpenShift. You may have additional directories or files.
      |  +- locked_files.txt        (optional)
      |  +- snapshot_exclusions.txt (optional)
      |  +- snapshot_transforms.txt (optional)
-     +- httpd.d                    (optional)
+     +- httpd.d                    (discretionary)
      |  +- `cartridge name`-`cartridge version`.conf.erb
      |  +- ...
-     +- conf.d                     (example)
+     +- conf.d                     (discretionary)
      |  +- openshift.conf.erb
-     +- conf                       (example)
+     +- conf                       (discretionary)
      |  +- magic
 
 To support multiple software versions within one cartridge,
@@ -449,8 +454,6 @@ The actions that must be supported:
    * `start` start the software your cartridge controls
    * `stop` stop the software your cartridge controls
    * `status` return an 0 exit status if your cartridge code is running.
-      Additionally, you may return user directed information to stdout.
-      Errors may be return on stderr with an non-zero exit status.
    * `reload` your cartridge and it's controlled code needs to re-read their
       configuration information. Depending on the software your cartridge is controlling
       this may equate to a restart.
@@ -468,6 +471,30 @@ The actions that must be supported:
 
 Lock context: `locked`
 
+###### `status` Action
+
+For a number of reasons the application developer will want to be a
+to query whether the software your cartridge controls is running and
+behaving as expected.  A `0` exit status implies that the software is
+running correctly. 
+
+You may direct information to the application developer by writing
+to stdout.  Errors may be return on stderr with an non-zero exit status.
+
+OpenShift maintains the expected state of the gear/application in
+`~/app-root/runtime/.state`. You may not use this to determine the
+status of the software you are controlling.  That software may have
+crashed so you would be returning invalid status if you used this file's
+value. Future versions of OpenShift may combine the results from the
+`status` action and the value of the `.state` file to automatically
+restart failed applications. For completeness, `.state` values:
+
+    * `building`    application is currently being built
+    * `deploying`   application is currently being deployed
+    * `idle`        application has been shutdown because of no activity
+    * `new`         gear has been created, but no application has been installed
+    * `started`     application has been commanded to start
+    * `stopped`     application has been commanded to stop
 
 ## bin/build
 

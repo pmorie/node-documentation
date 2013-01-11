@@ -1,4 +1,11 @@
-# How To Write An OpenShift Origin Node Agent 2.0
+TODO:
+
+- [ ] Gear log design. Think syslog fanning to gear specific logs
+- [ ] Maintain .state file for gear
+- [ ] Template git repo needs to be identified by cartridge setup
+
+
+# How To Write An OpenShift Origin Node Platform 2.0
 
 OpenShift node platforms provide the interface for the broker to command a gear or gear's cartridge. 
 
