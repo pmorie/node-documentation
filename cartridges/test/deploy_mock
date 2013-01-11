@@ -1,0 +1,35 @@
+#!/bin/bash -e
+
+# Deploy a cartridge used for writing and testing cartridges
+# TODO: Generalize for any cartridge type
+
+uuid=$(uuidgen|sed -r 's/-//g')
+source=${1:-.}
+gear_dir=${2:-/tmp/mock}/$uuid
+cart_dir=$gear_dir/mock-0.0
+
+mkdir -p $cart_dir
+cp -ad $source $cart_dir
+
+mkdir -p $gear_dir/{app-root/{data,log,runtime/repo},.env,git,.sandbox,.ssh,.tmp}
+
+app_name=cartridge
+app_dns=$app_name.test.mock
+gear_env=$gear_dir/.env
+
+echo "HISTFILE=$gear_dir/app-root/data/.bash_history"     >$gear_env/HISTFILE
+echo "OPENSHIFT_APP_DNS=$app_dns"                         >$gear_env/OPENSHIFT_APP_DNS
+echo "OPENSHIFT_APP_NAME=$app_name"                       >$gear_env/OPENSHIFT_APP_NAME
+echo "OPENSHIFT_APP_UUID=$(uuidgen|sed -r 's/-//g')"      >$gear_env/OPENSHIFT_APP_UUID
+echo "OPENSHIFT_DATA_DIR=$gear_dir/app-root/data"         >$gear_env/OPENSHIFT_DATA_DIR
+echo "OPENSHIFT_GEAR_DNS=$app_dns"                        >$gear_env/OPENSHIFT_GEAR_DNS
+echo "OPENSHIFT_GEAR_NAME=$app_name"                      >$gear_env/OPENSHIFT_GEAR_NAME
+echo "OPENSHIFT_GEAR_UUID=$uuid"                          >$gear_env/OPENSHIFT_GEAR_UUID
+echo "OPENSHIFT_HOMEDIR=$gear_dir"                        >$gear_env/OPENSHIFT_HOMEDIR
+echo "OPENSHIFT_INTERNAL_IP=127.0.0.1"                    >$gear_env/OPENSHIFT_INTERNAL_IP
+echo "OPENSHIFT_INTERNAL_PORT=8080"                       >$gear_env/OPENSHIFT_INTERNAL_PORT
+echo "OPENSHIFT_REPO_DIR=$gear_dir/app-root/runtime/repo" >$gear_env/OPENSHIFT_REPO_DIR
+echo "OPENSHIFT_TMP_DIR=/tmp"                             >$gear_env/OPENSHIFT_TMP_DIR
+
+echo "Installed in $gear_dir"
+exit 0

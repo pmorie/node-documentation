@@ -57,7 +57,7 @@ to use the bin/control file as a shim to call the correct versioned
 control file.
 
 When creating an instance of your cartridge for use by a gear, OpenShift
-will copy the files, links and directories from the cartridge repository
+will copy the files, links and directories from the cartridge library
 with the exclusion of the opt directory. The opt directory will be
 sym-linked into the gear's cartridge instance. This allows for sharing
 of libraries and other data across cartridge instances.
@@ -133,7 +133,7 @@ Scaling:
 Cartridge instances within a gear will be either `locked` or `unlocked`
 at any given time.  Unlocking a cartridge allows the cartridge scripts
 to have additional access to the gear's files and directories. Other
-scripts and hooks written by the cartridge user will not be able to
+scripts and hooks written by the application developer will not be able to
 override decisions you make as the cartridge author.
 
 The lock state is controlled by OpenShift. Cartridges are locked and
@@ -180,8 +180,8 @@ the application is deploying and running. These directories would need
 to be created by the nodejs `setup` script which is run while the gear
 is unlocked.
 
-The following list of directories are reserved by OpenShift in the the
-gear's home directory:
+The following list is reserved by OpenShift in the the gear's home
+directory:
 
     .ssh
     .sandbox
@@ -256,9 +256,11 @@ be run from the home directory of the gear.
 A cartridge must implement the following scripts:
 
 * `setup`: prepare this instance of cartridge to be operational
+* `control`: command cartridge to report or change state
+
+A cartridge may implement the following scripts:
 * `teardown`: prepare this instance of cartridge to be removed
 * `runhook`: run user provided code
-* `control`: command cartridge to report or change state
 
 ### Exit Status Codes ###
 
@@ -294,8 +296,11 @@ conventions from sysexit.h below:
 Copyright (c) 1987, 1993 The Regents of the University of California.  All rights reserved.
 ```
 
-These exit status codes will allow OpenShift to refine it's behavior when returning HTTP status codes for the REST API, whether an internal operation can
-continue or should aborted etc. Should your script return a value not included in this table, OpenShift will assume the problem is fatal to your cartridge.
+These exit status codes will allow OpenShift to refine it's behavior
+when returning HTTP status codes for the REST API, whether an internal
+operation can continue or should aborted etc. Should your script return
+a value not included in this table, OpenShift will assume the problem
+is fatal to your cartridge.
 
 ## bin/setup
 
@@ -313,7 +318,7 @@ If no homedir is provided, the default is OPENSHIFT_HOMEDIR.
 ##### Description
 
 The `setup` script is responsible for creating and/or configuring the
-files that were copied from the cartridge repository into the gear's
+files that were copied from the cartridge library into the gear's
 directory. If you have used ERB templates for software configuration
 this is where you would processes those files.  An example would be
 PHP's php.ini file:
@@ -399,7 +404,7 @@ writing to stdout the following message(s):
 
 ##### Description
 
-Hooks are called by OpenShift to allow the cartridge user to control
+Hooks are called by OpenShift to allow the application developer to control
 aspects of the cartridge or the software controlled by the cartridge.
 
 The `runhook` script is usually a shim to ensure the environment
@@ -501,7 +506,7 @@ to be used for all cartridge entry points.
  * `OPENSHIFT_HOMEDIR` OpenShift assigned directory for the gear
  * `OPENSHIFT_INTERNAL_IP` the private IP address for this gear *jwh: may go away*
  * `OPENSHIFT_INTERNAL_PORT` the private PORT for this gear *jwh: may go away*
- * `OPENSHIFT_REPO_DIR` the directory where the software your cartridge controls is stored
+ * `OPENSHIFT_REPO_DIR` the directory where the developer's application is "archived" to and will be run from.
  * `OPENSHIFT_TMP_DIR` the directory where your cartridge may store temporary data
 
 ### Examples of Cartridge Provided Variables ###

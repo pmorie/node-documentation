@@ -1,106 +1,80 @@
-# How To Write An OpenShift Origin Node Agent 2.0 #
+# How To Write An OpenShift Origin Node Agent 2.0
 
-OpenShift node agents provide the interface for the broker to command a gear or gear's cartridge. 
+OpenShift node platforms provide the interface for the broker to command a gear or gear's cartridge. 
 
-## Gear Directory Structure ##
+## Gear Directory Structure
 
-This is the minimal structure to which your gear is expected to conform
-when written to disk. Failure to meet these expections will cause your
-gear to not function when either installed or used on OpenShift. You may
-not have additional directories or files at the `uuid` level.  They will
-interfere with OpenShift's operation.
+This is the structure to which gears are expected to conform when written
+to disk. 
 
     .../`uuid`
     +- `cartridge name`-`cartridge version`
-    |   +- bin
-    |   |  +- setup
-    |   |  +- teardown
-    |   |  +- runhook
-    |   |  +- control
-    |   |  +- build
-    |   +- versions
-    |   |  +- `software version`
-    |   |  |  +- bin
-    |   |  |     +- build
-    |   +- env
-    |   |  +- *.erb
-    |   +- metadata
-    |   |  +- manifest.yml
-    |   |  +- root_files.txt
-    |   +- http.d
-    |   |  +- `cartridge name`-`cartridge version`.conf.erb
+    |   +-... (See README.writing_cartridges.md for cartridge details.)
     +- `cartridge name`-`cartridge version`
     |   +- see above...
     +- app-root
     |  +- data
     |  +- runtime
     |     +- repo
+    |  +- log
+    |     +- `uuid`.log  (OpenShift logs information that application developer may need. Not application log, gear log.)
     +- git
     +- .ssh
     +- .tmp
     +- .sandbox
-    +- .env *jwh: This is where we could put gear-wide environment variables.*
+    +- .env
 
-## Cartridge Locking ##
+## Cartridge Locking
 
-Cartridges on disk within a gear may be either `locked` or `unlocked` at
-a given time. When a cartridge is unlocked, a subset of files and directories
-(specified by `root_files.txt`) will be writable by the gear user to enable
-the cartridge scripts to perform their work.
+Cartridge instances within a gear will be either `locked` or `unlocked`
+at any given time.  Unlocking a cartridge allows the cartridge scripts
+to have additional access to the gear's files and directories. Other
+scripts and hooks written by the application developer will not be able
+to override decisions made by the cartridge author.
 
-Unlocking allows the cartridge scripts to have additional access to the gear's 
-files and directories. Other scripts and hooks written by the end user will 
-not be able to override decisions you make as the cartridge author.
+### Lock configuration
 
-The lock state is controlled by the OpenShift infrastructure, and cartridges
-are locked and unlocked at various points in the cartridge lifecycle.
+For the cartridge the `metadata/locked_files.txt` lists the files and
+directories, one per line, that you will provide to the cartridge author
+with read/write access while the cartridge is unlocked, but only read
+access to the application developer while the cartridge is locked.
 
-If you fail to provide a `metadata/root_files.txt` file or the file
-is empty, your cartridge will remain always locked. For a very simple cartridges 
-this may be sufficient.
-
-### Configuring Locking ###
-
-The `metadata/root_files.txt` lists the files and directories, one per
-line, that will be provided to the cartridge author with read/write
-access while the cartridge is unlocked, but only read access to the end
-user while the cartridge is locked. Any non-existant files that are
-included in the list will be created when the cartridge is unlocked.
-Any missing parent directories will be created as needed. The list
-is anchored at the gear's home directory.  Entries ending in slash
-is processed as a directory.  Entries ending in asterisk are a list
-of files.  Entries ending in an other character are concidered files.
-The system will not attempt to change files to directories or vice versa,
-and your cartridge may fail to operate if files are miscatergorized and
-you depend on the system to create them.
-
-Here is a list for the php cartridge.
-
-    .pearrc
-    php-5.3/bin/
-    php-5.3/bin/*
-    php-5.3/conf/*
-
-Note in the above list the files in the `php-5.3/conf` directory are
-unlocked but the directory itself is not.  Directories like `.node-gyp`
-and `.npm` for the nodejs are **NOT** candidates to be created in this
-manner as they require the gear to have read and write access. These
-directories would need to be created by the nodejs setup script which
-is run while the gear is unlocked.
-
-The following list of directories are reserved:
+This is the list of reserved items in the gear's home directory:
 
     .ssh
     .sandbox
     .tmp
-    app-root
-    git
+    .env
+    any not hidden directory or file
 
-## Cartridge Operations ##
+When unlocking a cartridge, you will:
+    1. create any non-existent entries that are included in the
+       list. Entries are anchored at the gear's home directory.
+    2. log a warning on any reserved entries
+    3. chown entries to gear user
+    4. chcon entries to set selinux context of gear user
+
+An entry ending in slash is processed as a directory.  Entries ending
+in asterisk are a list of files.  Entries ending in an other character
+are considered files.  Do not attempt to change files to directories or
+vice versa, log a warning if this attempted.
+
+If the cartridge author fails to provide a `metadata/locked_files.txt`
+file or the file is empty, do nothing.
+
+When locking a cartridge, you will:
+    1. chown entries to root
+    2. chcon entries to root
+
+You may assume the cartridge author has set the file and directory mode
+bits correctly.
+
+## Cartridge Operations
 
 To install any php cartridge:
 
      # cp -ad ./php-5.3 ~UUID/                 - Run as root
+     # (setup ~UUID/git repository)            - Run as root
      # stickshift/unlock.rb UUID php-5.3       - Run as root
      $ ~/php-5.3/setup --version php-5.3       - Bulk of work, run as user, from ~UUID
      # stickshift/lock.rb UUID php-5.3         - Run as root
@@ -116,67 +90,91 @@ To remove a php cartridge:
 
 ## High Level Orchestrations
 
-Broker level orchestrations orchestrations which are accomplished by the node library.
+Broker level orchestrations which are accomplished by the node library.
 
 
 ### Create Application
 
 * Gear Create
 * Cartridge Install
-* Expose ports
+* Expose Endpoints
 * Execute connectors
 
 
 ## Node Operation Summary
 
-An overview of the higher level capabilities of the node, with information about how lower-level operations are orchestrated / invoked.
+An overview of the higher level capabilities of the node, with information
+about how lower-level operations are orchestrated / invoked.
 
 
-### Gear
+### Gear Operations
 
 * Create
 * Delete
 
 
-### Cartridge
+### Cartridge Operations
 
-* Configure
-* Deconfigure
-* Expose ports
-* Conceal ports
-* Add / remove environment vars
+* `setup`
+* `teardown`
+* Expose Endpoints (implemented in node platform using manifest)
+* Conceal Endpoints (implemented in node platform using manifest)
+* Add / remove environment variables
 * Start / Stop / Restart (Control cartridge?)
 
 ## Node Operation Details
 
 ### Gear Create
 
-* Creates a UNIX account representing the gear user.
-* Creates skeletal file system
-* Creates cgroups / mcslabels?
-* Creates port proxy config
-* Create standard gear environment variables
+* Create a UNIX account representing the gear
+* Create skeletal gear file system entries
+* Create cgroups / mcslabels?
+* Create port proxy config                           * jwh: proxy or endpoint here? *
+* Create standard gear environment variable(s)
+ * `HISTFILE`                 bash history file
+  * Default: ~UUID/app-root/data/.bash_history
+ * `OPENSHIFT_APP_DNS`        the application's fully qualified domain name maintained by the Broker
+ * `OPENSHIFT_APP_NAME`       the validated user assigned name for the application. Black list is maintained by the Broker.
+ * `OPENSHIFT_APP_UUID`       UUID maintained by Broker for the application that owns this gear
+ * `OPENSHIFT_DATA_DIR`       the directory where a cartridge may store data
+  * Default: ~UUID/app-root/data
+ * `OPENSHIFT_GEAR_DNS`       the gear's fully qualified domain name that your cartridge is a part of. May or may not be equal to
+                              `OPENSHIFT_APP_DNS`
+ * `OPENSHIFT_GEAR_NAME`      Broker assigned name for the gear. May or may not be equal to `OPENSHIFT_APP_NAME`
+ * `OPENSHIFT_GEAR_UUID`      UUID used for the gear's UNIX user's account field
+ * `OPENSHIFT_HOMEDIR`        Directory for the gear
+  * Default: $GEAR_BASE_DIR/UUID
+ * `OPENSHIFT_INTERNAL_IP`    the private IP address for this gear
+ * `OPENSHIFT_INTERNAL_PORT`  the private PORT for this gear
+ * `OPENSHIFT_REPO_DIR`       the directory where the developer's application is archived to, and run from
+ * `OPENSHIFT_TMP_DIR`        the directory where a cartridge may store temporary data
+  * Default: /tmp
 * Install default gear httpd conf
 * Bounce node httpd
 
 ### Gear Delete
 
 * Call cartridge runhook pre-destroy
-* Corral and kill all gear user processes
-* Call cartridge teardown
+* Corral and kill all gear user processes (see pkill)
+* Call cartridge teardown                             * jwh: is this needed on Gear delete? *
+* Delete gear httpd conf
 * Delete gear directories
 * Delete gear user
 
 TODO: deal with node httpd bouncing somewhere
 
-### Cartridge Configure
+### Cartridge Setup
 
 * Disable cgroups
-* Create the initial cart directory from the cart repo/template
+* Create the initial cart directory from the cart library/template
+* Populate the gear git repository if a template provided by the cartridge
 * Process env ERB templates
+* Load gear + cartridge env variables
 * Unlock cartridge
 * Call cartridge setup
 * Lock cartridge
+* Load gear + cartridge env variables (This pulls in any env variables created by `setup`)
+* Expose endpoint(s)
 * Call cartridge control start
 * Install cart-supplied node http.d confs (ERB templates)
 * Bounce the node httpd
@@ -184,14 +182,16 @@ TODO: deal with node httpd bouncing somewhere
 
 TODO: any runhook calls here? e.g. post-install
 
-### Cartridge Deconfigure
-* Conceal ports
+### Cartridge Teardown
+
+* Conceal endpoint(s)
 * Disable cgroups
+* Load gear + cartridge env variables
 * Call cartridge control stop
 * Unlock cartridge
 * Call cartridge teardown
 * Uninstall cart-supplied node httpd.confs
-* Lock cartridge
+* Lock cartridge (this may lock files/directories that are left elsewhere in the gear)
 * Delete cartridge directory
 * Enable cgroups
 * Bounce the node httpd (performance impact?)
@@ -199,24 +199,14 @@ TODO: any runhook calls here? e.g. post-install
 TODO: any runhook calls here? e.g. post-remove
 
 
-### Cartridge expose port
+### Cartridge Expose Endpoints
 
+* Read cartridge manifest
 * Create .env/OPENSHIFT_${CART_NS}_PROXY_PORT
 * Report OPENSHIFT_GEAR_DNS, OPENSHIFT_${CART_NS}_PROXY_PORT, OPENSHIFT_INTERNAL_IP, OPENSHIFT_INTERNAL_PORT back to broker
 
-### Cartridge conceal ports
+### Cartridge Conceal Endpoints
 
+* Read cartridge manifest
 * Delete .env/OPENSHIFT_${CART_NS}_PROXY_PORT
 * remove_proxy_port $uuid "$OPENSHIFT_INTERNAL_IP:$OPENSHIFT_INTERNAL_PORT"
-
-## Low Level
-
-### Lock cartridge
-
-* chown files in root_files.txt
-* chcon to set sel context
-
-### Unlock cartridge
-
-* chown files in root_files.txt
-* chcon to set sel context
