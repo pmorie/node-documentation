@@ -573,19 +573,19 @@ OpenShift will render those files and remove the .erb suffix. They will
 be processed before your `setup` script is run. You could write the
 `env/JENKINS_URL.erb` as:
 
-    JENKINS_URL='https://<%= ENV['OPENSHIFT_APP_DNS'] %>/'
+    export JENKINS_URL='https://<%= ENV['OPENSHIFT_APP_DNS'] %>/'
 
 which would then be rendered as `env/JENKINS_URL`:
 
-    JENKINS_URL='http://jenkins-namespace.rhcloud.com/'
+    export JENKINS_URL='http://jenkins-namespace.rhcloud.com/'
 
 Or, `env/OPENSHIFT_MONGODB_DB_LOG_DIR.erb`:
 
-    OPENSHIFT_MONGODB_DB_LOG_DIR='<% ENV['OPENSHIFT_HOMEDIR'] %>/mongodb-2.2/log/'
+    export OPENSHIFT_MONGODB_DB_LOG_DIR='<% ENV['OPENSHIFT_HOMEDIR'] %>/mongodb-2.2/log/'
 
 renders as `env/OPENSHIFT_MONGODB_DB_LOG_DIR`:
 
-    OPENSHIFT_MONGODB_DB_LOG_DIR='/var/lib/openshift/aa9e0f66e6451791f86904eef0939e/mongodb-2.2/log/'
+    export OPENSHIFT_MONGODB_DB_LOG_DIR='/var/lib/openshift/aa9e0f66e6451791f86904eef0939e/mongodb-2.2/log/'
 
 Your templates will be rendered at `safe_level 2`.  [Locking Ruby in
 the Safe](http://www.ruby-doc.org/docs/ProgrammingRuby/html/taint.html).

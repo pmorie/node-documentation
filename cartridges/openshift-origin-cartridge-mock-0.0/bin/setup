@@ -22,6 +22,7 @@ fi
 expected_variables="HISTFILE OPENSHIFT_APP_DNS OPENSHIFT_APP_NAME
     OPENSHIFT_APP_UUID OPENSHIFT_DATA_DIR OPENSHIFT_GEAR_DNS OPENSHIFT_GEAR_NAME
     OPENSHIFT_GEAR_UUID OPENSHIFT_HOMEDIR OPENSHIFT_INTERNAL_IP OPENSHIFT_INTERNAL_PORT
+    OPENSHIFT_MOCK_IP OPENSHIFT_MOCK_PORT
     OPENSHIFT_REPO_DIR OPENSHIFT_TMP_DIR"
 
 for e in $expected_variables; do
@@ -45,7 +46,7 @@ case $1 in
             *) error_exit "Illegal command line option: $1" 64 ;;
 esac
 echo "Version: $version" >$MOCK_STATE/setup_version
-echo "MOCK_VERSION=\'$version\'" >mock-0.0/env/MOCK_VERSION
+echo "OPENSHIFT_MOCK_VERSION=\'$version\'" >mock-0.0/env/OPENSHIFT_MOCK_VERSION
 
 touch $MOCK_STATE/setup_succeed
 exit 0
